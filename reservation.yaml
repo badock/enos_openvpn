@@ -1,0 +1,110 @@
+---
+# ############################################### #
+# Static provider parameter                       #
+# ############################################### #
+provider:
+  type: static
+  networks:
+    - cidr: 11.8.0.0/24
+      start: 11.8.0.20
+      end:  11.8.0.200
+      gateway: 11.8.0.1
+      dns: 8.8.8.8
+    - cidr: 11.8.1.0/24
+      start: 11.8.1.50
+      end:  11.8.1.200
+      gateway: 11.8.1.1
+      dns: 8.8.8.8
+  eths:
+    - tap0
+    - tap1
+
+resources:
+  control:
+    address: 11.8.0.2
+    # alias: control-node
+    user: root
+    # port: 2222
+    # keyfile: /path/to/private_key
+    # extra: ...
+  network:
+    address: 11.8.0.3
+    # alias: network-node
+    user: root
+    # port: 2222
+    # keyfile: /path/to/private_key
+    # extra: ...
+  compute:
+    - address: 11.8.0.4
+      # alias: compute-node1
+      user: root
+      # port: 2222
+      # 172.16.192.22keyfile: /path/to/private_key
+      # extra: ...
+    - address: 11.8.0.5
+      # alias: compute-node2
+      user: root
+      # port: 2222
+      # keyfile: /path/to/private_key
+      # extra: ...
+    - address: 11.8.0.6
+      # alias: compute-node2
+      user: root
+      # port: 2222
+      # keyfile: /path/to/private_key
+      # extra: ...
+    - address: 11.8.0.7
+      # alias: compute-node2
+      user: root
+      # port: 2222
+      # keyfile: /path/to/private_key
+      # extra: ...
+    - address: 11.8.0.8
+      # alias: compute-node2
+      user: root
+      # port: 2222
+      # keyfile: /path/to/private_key
+      # extra: ...
+    - address: 11.8.0.9
+      # alias: compute-node2
+      user: root
+      # port: 2222
+      # keyfile: /path/to/private_key
+      # extra: ...
+
+
+
+# ############################################### #
+# Inventory to use                                #
+# ############################################### #
+
+# This will describe the topology of your services
+inventory: inventories/inventory.sample
+
+# ############################################### #
+# docker registry parameters
+# ############################################### #
+registry:
+  type: internal
+
+# ############################################### #
+# Enos Customizations                             #
+# ############################################### #
+enable_monitoring: no
+
+
+# ############################################### #
+# Kolla parameters                                #
+# ############################################### #
+# Repository
+kolla_repo: "https://git.openstack.org/openstack/kolla-ansible"
+#kolla_ref: "master"
+kolla_ref: "stable/ocata"
+#kolla_ref: "stable/pike"
+
+# Vars : globals.yml
+kolla:
+  kolla_base_distro: ubuntu
+  kolla_install_type: source
+  docker_namespace: beyondtheclouds
+  enable_heat: no
