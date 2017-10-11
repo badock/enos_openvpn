@@ -47,30 +47,30 @@ resources:
       # port: 2222
       # keyfile: /path/to/private_key
       # extra: ...
-    - address: 11.8.0.6
-      # alias: compute-node2
-      user: root
-      # port: 2222
-      # keyfile: /path/to/private_key
-      # extra: ...
-    - address: 11.8.0.7
-      # alias: compute-node2
-      user: root
-      # port: 2222
-      # keyfile: /path/to/private_key
-      # extra: ...
-    - address: 11.8.0.8
-      # alias: compute-node2
-      user: root
-      # port: 2222
-      # keyfile: /path/to/private_key
-      # extra: ...
-    - address: 11.8.0.9
-      # alias: compute-node2
-      user: root
-      # port: 2222
-      # keyfile: /path/to/private_key
-      # extra: ...
+#     - address: 11.8.0.6
+#       # alias: compute-node2
+#       user: root
+#       # port: 2222
+#       # keyfile: /path/to/private_key
+#       # extra: ...
+#     - address: 11.8.0.7
+#       # alias: compute-node2
+#       user: root
+#       # port: 2222
+#       # keyfile: /path/to/private_key
+#       # extra: ...
+#     - address: 11.8.0.8
+#       # alias: compute-node2
+#       user: root
+#       # port: 2222
+#       # keyfile: /path/to/private_key
+#       # extra: ...
+#     - address: 11.8.0.9
+#       # alias: compute-node2
+#       user: root
+#       # port: 2222
+#       # keyfile: /path/to/private_key
+#       # extra: ...
 
 
 
