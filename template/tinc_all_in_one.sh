@@ -7,6 +7,8 @@ if [ $# -ne 8 ]; then
     exit 1
 fi
 
+MTU="1700"
+
 LOCAL_VPN_IP="$1"
 REMOTE_WAN_IP="$2"
 IS_MASTER="$3"
@@ -51,7 +53,7 @@ Cipher = none
 #Cipher = aes-128-cbc
 #UDPSndBuf = 393216
 #UDPRcvBuf = 393216
-PMTU = 48000
+PMTU = $MTU
 PMTUDiscovery = no
 EOF
     cat << EOF > /etc/tinc/net1/tinc.conf
@@ -72,7 +74,7 @@ Cipher = none
 #Cipher = aes-128-cbc
 #UDPSndBuf = 393216
 #UDPRcvBuf = 393216
-PMTU = 48000
+PMTU = $MTU
 PMTUDiscovery = No
 EOF
 else
@@ -95,7 +97,7 @@ Cipher = none
 #Cipher = aes-128-cbc
 #UDPSndBuf = 393216
 #UDPRcvBuf = 393216
-PMTU = 48000
+PMTU = $MTU
 PMTUDiscovery = no
 EOF
     cat << EOF > /etc/tinc/net1/tinc.conf
@@ -117,7 +119,7 @@ Cipher = none
 #Cipher = aes-128-cbc
 #UDPSndBuf = 393216
 #UDPRcvBuf = 393216
-PMTU = 48000
+PMTU = $MTU
 PMTUDiscovery = no
 EOF
 fi
@@ -145,10 +147,10 @@ tincd -n net0 -K4096
 tincd -n net1 -K4096
 
 cat << EOF > /etc/tinc/net0/tinc-up
-ifconfig tap0 11.8.0.$COUNTER netmask 255.255.255.0 mtu 4800
+ifconfig tap0 11.8.0.$COUNTER netmask 255.255.255.0 mtu $MTU
 EOF
 cat << EOF > /etc/tinc/net1/tinc-up
-ifconfig tap1 11.8.1.$COUNTER netmask 255.255.255.0 mtu 4800
+ifconfig tap1 11.8.1.$COUNTER netmask 255.255.255.0 mtu $MTU
 EOF
 
 cat << EOF > /etc/tinc/net0/tinc-down
