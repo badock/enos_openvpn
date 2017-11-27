@@ -35,6 +35,8 @@ echo $IPS_STR
 echo $VIRTUAL_IPS
 
 COUNTER=1
+G5K_PARTITION_SIZE_FIX="true"
+
 while read HOST
 do
     IP=$(getent hosts $HOST | awk '{ print $1 }' | head -n 1)
@@ -47,6 +49,12 @@ do
     fi
 
     ssh $IP -l root "screen -dmS install_python bash -c 'apt-get install -y python python-dev git python-pip; echo 1 > /root/python_install_done.txt'" < /dev/null
+
+    if [ "$G5K_PARTITION_SIZE_FIX" = "true" ]; then
+        echo "/!\ Warning: G5K_PARTITION_SIZE_FIX should be true only for Grid'5000."
+        ssh $IP -l root "(mount | grep /tmp/nova) || mount --bind /tmp/nova /var/lib/nova" < /dev/null
+    fi
+
 
     # Update the counter before continuing the loop
     ((COUNTER++))
