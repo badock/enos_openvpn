@@ -52,7 +52,8 @@ do
 
     if [ "$G5K_PARTITION_SIZE_FIX" = "true" ]; then
         echo "/!\ Warning: G5K_PARTITION_SIZE_FIX should be true only for Grid'5000."
-        ssh $IP -l root "(mount | grep /tmp/nova) || mount --bind /tmp/nova /var/lib/nova" < /dev/null
+        ssh $IP -l root "mkdir -p /tmp/nova ; mkdir -p /var/lib/nova;" < /dev/null
+        ssh $IP -l root "mount --bind /tmp/nova /var/lib/nova" < /dev/null
     fi
 
 
