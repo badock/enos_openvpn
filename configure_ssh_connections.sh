@@ -8,18 +8,18 @@ echo "- Configuring ssh keys on hosts -"
 echo "---------------------------------"
 
 # Clean and create a temporary folder
-echo " * preparing tmp folder"
-if [ -d tmp ]; then
-    rm -rf tmp
-fi
-mkdir tmp
+# echo " * preparing tmp folder"
+# if [ -d tmp ]; then
+#     rm -rf tmp
+# fi
+# mkdir tmp
 
 # Generate an ssh key
 echo " * generating an ssh key"
 ssh-keygen -t rsa -b 4096 -C "comment" -P "" -f tmp/id_rsa -q
 
 # Upload private and public key on hosts
-cat $OAR_NODE_FILE | uniq > tmp/uniq_hosts.txt
+# cat $OAR_NODE_FILE | uniq > tmp/uniq_hosts.txt
 while read HOST
 do
     echo " * configuring $HOST"
