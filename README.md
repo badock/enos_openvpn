@@ -4,6 +4,14 @@
 
 Deploy an OpenStack infrastructure via Enos, in which the management network and the production network are implemented with two OpenVPN networks.
 
+## TLDR;
+
+Put the addresses of your servers in a tmp/uniq_hosts.txt (**not /tmp**), and run
+
+``` bash
+bash configure_ssh_connections.sh && bash configure_openvpn.sh && bash configure_enos.sh && bash run_enos.sh
+```
+
 ## Installation
 
 clone the project:
@@ -27,7 +35,7 @@ econome-3.nantes.grid5000.fr
 econome-4.nantes.grid5000.fr
 ```
 
-*Ensure that you can connect as root via SSH on each of these server.*
+**Ensure that you can connect as root via SSH on each of these server.**
 
 Then run configure the nodes so that they can connect to each other:
 ``` bash
@@ -67,7 +75,7 @@ bash configure_enos.sh
 
 ### Run Enos
 
-Once all the previous steps have been *successfully* completed, simply run the following command:
+Once all the previous steps have been **successfully** completed, simply run the following command:
 
 ``` bash
 bash run_enos.sh
