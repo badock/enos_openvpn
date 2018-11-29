@@ -84,7 +84,7 @@ if [ "$MASTER_IP" != "" ]; then
     ssh $MASTER_IP -l root "pip install virtualenv" < /dev/null
     ssh $MASTER_IP -l root "virtualenv enos_env" < /dev/null
     # ssh $MASTER_IP -l root ". enos/bin/activate; pip install enos" < /dev/null
-    ssh $MASTER_IP -l root ". enos_env/bin/activate; git clone https://github.com/msimonin/enos.git -b refactorNetwork; pip install -e enos/" < /dev/null
+    ssh $MASTER_IP -l root ". enos_env/bin/activate; git clone https://github.com/beyondtheclouds/enos.git -b stable/queens; pip install -e enos/" < /dev/null
 
     scp reservation.yaml root@$MASTER_IP:.
 fi

@@ -10,14 +10,16 @@ provider:
       end:  11.8.0.200
       gateway: 11.8.0.1
       dns: 8.8.8.8
+      roles: ["network_interface"]
     - cidr: 11.8.1.0/24
       start: 11.8.1.50
       end:  11.8.1.200
       gateway: 11.8.1.1
       dns: 8.8.8.8
-  eths:
-    - tap0
-    - tap1
+      roles: ["neutron_external_interface"]
+  # eths:
+  #   - tap0
+  #   - tap1
 
 resources:
   control:
@@ -99,12 +101,17 @@ enable_monitoring: no
 # Repository
 kolla_repo: "https://git.openstack.org/openstack/kolla-ansible"
 #kolla_ref: "master"
-kolla_ref: "stable/ocata"
+kolla_ref: "stable/queens"
 #kolla_ref: "stable/pike"
 
-# Vars : globals.yml
+# # Vars : globals.yml
+# kolla:
+#   kolla_base_distro: ubuntu
+#   kolla_install_type: source
+#   docker_namespace: beyondtheclouds
+#   enable_heat: "yes"
 kolla:
-  kolla_base_distro: ubuntu
+  kolla_base_distro: centos
   kolla_install_type: source
   docker_namespace: beyondtheclouds
   enable_heat: "yes"
