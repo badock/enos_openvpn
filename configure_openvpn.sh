@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 # Clean and create a temporary folder
-echo " * preparing tmp folder"
-if [ -d tmp ]; then
-    rm -rf tmp
-fi
-mkdir tmp
+# echo " * preparing tmp folder"
+# if [ -d tmp ]; then
+#     rm -rf tmp
+# fi
+# mkdir tmp
 
-# Upload private and public key on hosts
-cat $OAR_NODE_FILE | uniq > tmp/uniq_hosts.txt
+# # Upload private and public key on hosts
+# cat $OAR_NODE_FILE | uniq > tmp/uniq_hosts.txt
 
 HOSTS_STR=""
 IPS_STR=""
