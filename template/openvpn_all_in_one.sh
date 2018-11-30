@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 echo "Configuring OpenVPN on this host"
 
 if [ $# -ne 7 ]; then
@@ -18,7 +20,7 @@ CLIENT_ID="$7"
 #################################################
 # Install OpenVPN
 #################################################
-apt-get install -y openvpn screen #python
+apt-get install -y openvpn screen iptables-persistent #python
 
 #################################################
 # Configure OpenVPN
@@ -29,7 +31,14 @@ else
     scp $MASTER_NODE:/etc/openvpn/openvpn-shared-key.key /etc/openvpn/openvpn-shared-key.key
 fi
 
-groupadd nobody
+if grep -q nobody /etc/group
+    then
+         echo "group nobody already exists"
+    else
+         echo "group nobody does not exist";
+         groupadd nobody
+fi
+
 
 if [ ! -d "/etc/openvpn" ]; then
     mkdir -p /etc/openvpn
@@ -52,6 +61,8 @@ if [ "$IS_MASTER" == "TRUE" ]; then
     # Generating keys
     cp -r /usr/share/easy-rsa/ /etc/openvpn
     chown -R $USER /etc/openvpn/easy-rsa/
+
+    ln -s /etc/openvpn/easy-rsa/openssl-1.0.0.cnf /etc/openvpn/easy-rsa/openssl.cnf
 
     pushd /etc/openvpn/easy-rsa/
     source vars
