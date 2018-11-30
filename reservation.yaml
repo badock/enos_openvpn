@@ -23,16 +23,16 @@ provider:
 
 resources:
   control:
-    address: 11.8.0.2
-    alias: control-node
-    user: root
+    - address: 11.8.0.2
+      alias: control-node
+      user: root
     # port: 2222
     # keyfile: /path/to/private_key
     # extra: ...
   network:
-    address: 11.8.0.3
-    alias: network-node
-    user: root
+    - address: 11.8.0.3
+      alias: network-node
+      user: root
     # port: 2222
     # keyfile: /path/to/private_key
     # extra: ...

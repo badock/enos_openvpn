@@ -20,7 +20,7 @@ CLIENT_ID="$7"
 #################################################
 # Install OpenVPN
 #################################################
-apt-get install -y openvpn screen iptables-persistent #python
+apt-get install -y openvpn screen #python
 
 #################################################
 # Configure OpenVPN
@@ -76,6 +76,7 @@ if [ "$IS_MASTER" == "TRUE" ]; then
     mkdir /etc/openvpn/jail
     mkdir /etc/openvpn/jail/tmp
     mkdir /etc/openvpn/clientconf
+    mkdir /etc/openvpn/server
     popd
 
     cat << EOF > /etc/openvpn/server.conf
@@ -229,7 +230,7 @@ persist-key
 persist-tun
 verb 3
 
-script-security 2 system
+script-security 2
 route-up /root/delete_route.sh
 
 # Tweak
@@ -265,7 +266,7 @@ persist-key
 persist-tun
 verb 3
 
-script-security 2 system
+script-security 2
 route-up /root/delete_route.sh
 
 # Tweak
@@ -302,9 +303,12 @@ fi
 #################################################
 # Start OpenVPN service
 #################################################
-systemctl enable openvpn
-systemctl start openvpn
-systemctl restart openvpn
+# systemctl enable openvpn
+# systemctl start openvpn
+# systemctl restart openvpn
+openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/openvpn --config /etc/openvpn/server.conf
+openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/openvpn --config /etc/openvpn/server2.conf
+
 
 #if [ "$IS_MASTER" == "TRUE" ]; then
     iptables -t nat -A POSTROUTING -s 11.8.0.0/24 -o eth0 -j MASQUERADE
@@ -344,7 +348,7 @@ cat << EOF > /root/create_docker0.sh
 #     https://docs.docker.com/engine/userguide/networking/default_network/build-bridges/
 #
 
-apt-get install -y bridge-utils
+get install -y bridge-utils
 
 brctl addbr docker0
 ip addr add 192.168.42.1/24 dev docker0

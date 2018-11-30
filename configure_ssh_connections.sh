@@ -14,6 +14,10 @@ echo "---------------------------------"
 # fi
 # mkdir tmp
 
+# Remove existing keys
+rm tmp/id_rsa
+rm tmp/id_rsa.pub
+
 # Generate an ssh key
 echo " * generating an ssh key"
 ssh-keygen -t rsa -b 4096 -C "comment" -P "" -f tmp/id_rsa -q
