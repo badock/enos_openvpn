@@ -2,15 +2,15 @@
 
 # set -x
 
-# Clean and create a temporary folder
-echo " * preparing tmp folder"
-if [ -d tmp ]; then
-    rm -rf tmp
-fi
-mkdir tmp
+# # Clean and create a temporary folder
+# echo " * preparing tmp folder"
+# if [ -d tmp ]; then
+#     rm -rf tmp
+# fi
+# mkdir tmp
 
-# Upload private and public key on hosts
-cat $OAR_NODE_FILE | uniq > tmp/uniq_hosts.txt
+# # Upload private and public key on hosts
+# cat $OAR_NODE_FILE | uniq > tmp/uniq_hosts.txt
 
 HOSTS_STR=""
 IPS_STR=""
@@ -52,8 +52,15 @@ do
 
     if [ "$G5K_PARTITION_SIZE_FIX" = "true" ]; then
         echo "/!\ Warning: G5K_PARTITION_SIZE_FIX should be true only for Grid'5000."
-        ssh $IP -l root "mkdir -p /tmp/nova ; mkdir -p /var/lib/nova;" < /dev/null
-        ssh $IP -l root "mount --bind /tmp/nova /var/lib/nova" < /dev/null
+	echo "Creating docker volumes directory in /tmp"
+	ssh $IP -l root "mkdir -p /tmp/docker/volumes" < /dev/null
+	ssh $IP -l root "mkdir -p /var/lib/docker/volumes" < /dev/null
+	ssh $IP -l root "(mount | grep /tmp/docker/volumes) || mount --bind /tmp/docker/volumes /var/lib/docker/volumes" < /dev/null
+
+	echo "Creating nova directory in /tmp"
+	ssh $IP -l root "mkdir -p /tmp/nova" < /dev/null
+	ssh $IP -l root "mkdir -p /var/lib/nova" < /dev/null
+	ssh $IP -l root "(mount | grep /tmp/nova) || mount --bind /tmp/nova /var/lib/nova" < /dev/null
     fi
 
 

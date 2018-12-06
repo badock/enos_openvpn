@@ -348,7 +348,7 @@ cat << EOF > /root/create_docker0.sh
 #     https://docs.docker.com/engine/userguide/networking/default_network/build-bridges/
 #
 
-get install -y bridge-utils
+apt-get install -y bridge-utils
 
 brctl addbr docker0
 ip addr add 192.168.42.1/24 dev docker0

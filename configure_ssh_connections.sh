@@ -15,8 +15,10 @@ echo "---------------------------------"
 # mkdir tmp
 
 # Remove existing keys
-rm tmp/id_rsa
-rm tmp/id_rsa.pub
+if [ -f tmp/id_rsa ] && [ -f tmp/id_rsa.pub ]; then
+    rm tmp/id_rsa
+    rm tmp/id_rsa.pub
+fi
 
 # Generate an ssh key
 echo " * generating an ssh key"
