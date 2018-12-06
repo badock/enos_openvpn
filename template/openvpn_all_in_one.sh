@@ -20,7 +20,7 @@ CLIENT_ID="$7"
 #################################################
 # Install OpenVPN
 #################################################
-apt-get install -y openvpn screen #python
+apt-get install -y openvpn screen bridge-utils
 
 #################################################
 # Configure OpenVPN
@@ -55,8 +55,8 @@ if [ "$IS_MASTER" == "TRUE" ]; then
 
     # Configure network
     sh -c 'echo 1 > /proc/sys/net/ipv4/ip_forward'
-    iptables -t nat -A POSTROUTING -s 11.8.0.0/24 -o eth0 -j MASQUERADE
-    iptables -t nat -A POSTROUTING -s 11.8.1.0/24 -o eth0 -j MASQUERADE
+    iptables -t nat -A POSTROUTING -s 11.8.0.0/24 -o eno1 -j MASQUERADE
+    iptables -t nat -A POSTROUTING -s 11.8.1.0/24 -o eno1 -j MASQUERADE
 
     # Generating keys
     cp -r /usr/share/easy-rsa/ /etc/openvpn
@@ -311,8 +311,8 @@ openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/op
 
 
 #if [ "$IS_MASTER" == "TRUE" ]; then
-    iptables -t nat -A POSTROUTING -s 11.8.0.0/24 -o eth0 -j MASQUERADE
-    iptables -t nat -A POSTROUTING -s 11.8.1.0/24 -o eth0 -j MASQUERADE
+    iptables -t nat -A POSTROUTING -s 11.8.0.0/24 -o eno1 -j MASQUERADE
+    iptables -t nat -A POSTROUTING -s 11.8.1.0/24 -o eno1 -j MASQUERADE
 #fi
 
 
@@ -347,8 +347,6 @@ cat << EOF > /root/create_docker0.sh
 # reference
 #     https://docs.docker.com/engine/userguide/networking/default_network/build-bridges/
 #
-
-apt-get install -y bridge-utils
 
 brctl addbr docker0
 ip addr add 192.168.42.1/24 dev docker0
