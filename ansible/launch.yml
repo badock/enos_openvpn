@@ -1,0 +1,25 @@
+---
+# - name: Configure ssh connections
+#   hosts: all
+#   roles:
+#     - { role: ssh,
+#         tags: ['ssh'] }
+
+- name: Configure OpenVPN
+  hosts: all
+  remote_user: root
+  roles:
+    - { role: openvpn,
+        tags: ['openvpn'] }
+
+# - name: Configure Enos
+#   hosts: all
+#   roles:
+#     - { role: enos_conf,
+#         tags: ['enos_conf'] }
+
+# - name: Run Enos
+#   hosts: all
+#   roles:
+#     - { role: enos_run,
+#         tags: ['enos_run'] }

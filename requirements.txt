@@ -1,0 +1,9 @@
+# For reservation
+execo >= 2.6.4
+
+# creating command interfaces
+docopt
+
+# Enos & enoslib
+-e git+https://github.com/BeyondTheClouds/enos.git@master#egg=Enos
+-e git+https://github.com/BeyondTheClouds/enoslib.git@master#egg=Enoslib

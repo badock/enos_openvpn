@@ -1,0 +1,34 @@
+---
+
+
+- name: Installing dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - openvpn
+    - screen
+    - bridge-utils
+    - rsync
+
+- name: Ensure group nobody exists
+  group:
+    name: nobody
+    state: present
+
+- name: Creates directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /etc/openvpn
+    - /etc/openvpn/keys
+
+- name: Master node
+  include: master.yml
+  when: inventory_hostname == openvpn_node
+
+- name: Other nodes
+  include: others.yml
+  when: inventory_hostname != openvpn_node

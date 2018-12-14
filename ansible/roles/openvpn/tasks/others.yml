@@ -1,0 +1,6 @@
+---
+
+- name: Copy shared key
+  copy:
+    src: "{{ exec_dir }}/current/openvpn-shared-key.key"
+    dest: /etc/openvpn/openvpn-shared-key.key

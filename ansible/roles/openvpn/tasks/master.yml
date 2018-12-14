@@ -1,0 +1,98 @@
+---
+
+- name: Generating OpenVPN shared key
+  shell: openvpn --genkey --secret /etc/openvpn/openvpn-shared-key.key
+  args:
+    creates: /etc/openvpn/openvpn-shared-key.key
+
+- name: Set ip forwarding on in /proc and in the sysctl file
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+
+- name: Iptables
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    source: "{{ item }}"
+    out_interface: eno1
+    jump: MASQUERADE
+  with_items:
+    - 11.8.0.0/24
+    - 11.8.1.0/24
+
+
+- name: Copy easy-rsa
+  synchronize:
+    src: /usr/share/easy-rsa/
+    dest: /etc/openvpn/easy-rsa/
+  delegate_to: "{{ inventory_hostname }}"
+
+
+- name: Linking openssl conf
+  file:
+    src: /etc/openvpn/easy-rsa/openssl-1.0.0.cnf
+    dest: /etc/openvpn/easy-rsa/openssl.cnf
+    state: link
+
+
+- name: Preparing the keys directory
+  shell: ". ./vars; ./clean-all >/dev/null"
+  args:
+    chdir: "/etc/openvpn/easy-rsa/"
+    creates: "/etc/openvpn/easy-rsa/index.txt"
+
+- name: Generating Diffie-Hellman parameters (takes some time)
+  shell: ". ./vars; ./build-dh >/dev/null"
+  args:
+    chdir: "/etc/openvpn/easy-rsa/"
+    creates: "/etc/openvpn/easy-rsa/keys/dh2048.pem"
+
+- name: Building CA
+  shell: ". ./vars; ./pkitool --initca >/dev/null"
+  args:
+    chdir: "/etc/openvpn/easy-rsa/"
+    creates: "/etc/openvpn/easy-rsa/keys/ca.key"
+
+- name: Generating server certificate and key
+  shell: ". ./vars; ./pkitool --server server >/dev/null"
+  args:
+    chdir: "/etc/openvpn/easy-rsa/"
+    creates: "/etc/openvpn/easy-rsa/keys/server.key"
+
+- name: Generating CRL file
+  shell: ". ./vars; openvpn --genkey --secret keys/ta.key"
+  args:
+    chdir: "/etc/openvpn/easy-rsa/"
+    creates: "/etc/openvpn/easy-rsa/keys/ta.key"
+
+- name: Moving keys
+  shell: "cp {{ item }} /etc/openvpn/"
+  args:
+    chdir: "/etc/openvpn/easy-rsa/"
+    creates: "/etc/openvpn/ta.key"
+  with_items:
+    - keys/ca.crt
+    - keys/ta.key
+    - keys/server.crt
+    - keys/server.key
+    - keys/dh2048.pem
+
+- name: Creating directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /etc/openvpn/jail
+    - /etc/openvpn/jail/tmp
+    - /etc/openvpn/clientconf
+    - /etc/openvpn/server
+
+- name: Getting openvpn key to put on other nodes
+  fetch:
+    src: /etc/openvpn/openvpn-shared-key.key
+    dest: "{{ exec_dir }}/current/openvpn-shared-key.key"

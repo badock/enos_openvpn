@@ -1,0 +1,1 @@
+openvpn_node: "{{ groups['all'][0] }}"
