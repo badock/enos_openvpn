@@ -161,14 +161,15 @@
 
 - name: Taring the client directories
   archive:
-    path: "/etc/openvpn/clientconf/{{ item }}/"
-    dest: "/etc/openvpn/clientconf/{{ item }}.tgz"
+    path: "/etc/openvpn/clientconf/{{ item }}"
+    dest: "/etc/openvpn/clientconf/{{ item }}.tar.gz"
     format: gz
   loop: "{{ other_nodes }}"
 
 
 - name: Getting the archives to put on the nodes
   fetch:
-    src: "/etc/openvpn/clientconf/{{ item }}.tgz"
+    src: "/etc/openvpn/clientconf/{{ item }}.tar.gz"
     dest: "{{ exec_dir }}/current/"
+    flat: yes
   loop: "{{ other_nodes }}"

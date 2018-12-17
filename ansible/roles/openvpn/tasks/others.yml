@@ -10,21 +10,18 @@
 
 - name: Get tars
   copy:
-    src: "{{ exec_dir }}/current/{{ inventory_hostname }}.tgz"
-    dest: "/root/{{ inventory_hostname }}.tgz"
+    src: "{{ exec_dir }}/current/{{ inventory_hostname }}.tar.gz"
+    dest: "/root/{{ inventory_hostname }}.tar.gz"
 
 - name: Extract directory
   unarchive:
-    src: "/root/{{ inventory_hostname }}.tgz"
+    src: "/root/{{ inventory_hostname }}.tar.gz"
     dest: "/root/"
     remote_src: yes
 
 
 - name: Using client.conf
   shell: "openvpn --daemon client.conf >/dev/null"
-  args:
-    chdir: "root/"
-
 
 - name: Waiting a few seconds
   pause:
