@@ -144,3 +144,4 @@ Temporary Items
 
 venv/
 current/
+*.retry

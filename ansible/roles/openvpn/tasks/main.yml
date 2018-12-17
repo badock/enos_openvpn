@@ -1,6 +1,5 @@
 ---
 
-
 - name: Installing dependencies
   apt:
     name: "{{ item }}"
@@ -12,10 +11,12 @@
     - bridge-utils
     - rsync
 
+
 - name: Ensure group nobody exists
   group:
     name: nobody
     state: present
+
 
 - name: Creates directories
   file:
@@ -25,10 +26,43 @@
     - /etc/openvpn
     - /etc/openvpn/keys
 
+
 - name: Master node
   include: master.yml
   when: inventory_hostname == openvpn_node
 
+
 - name: Other nodes
   include: others.yml
   when: inventory_hostname != openvpn_node
+
+
+- name: Starting OpenVPN service
+  shell: "openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/openvpn --config /etc/openvpn/{{ item }}"
+  loop:
+    - server.conf
+    - server2.conf
+  when: inventory_hostname == openvpn_node
+
+
+# Line 309 & 310 of openvpn_all_in_one, but already executed on master
+# - name: Masquerading
+#   iptables:
+#     table: nat
+#     chain: POSTROUTING
+#     source: "{{ item }}"
+#     out_interface: eno1
+#     jump: MASQUERADE
+#   loop:
+#     - 11.8.0.0/24
+#     - 11.8.1.0/24
+#   when: inventory_hostname == openvpn_node
+
+- name: Templating docker0 interface fix file
+  template:
+    src: create_docker0.sh.j2
+    dest: /root/create_docker0.sh
+    mode: "u=rwx,g=r,o=r"
+
+- name: Executing docker0 interface fix file
+  shell: "./root/create_docker0.sh"

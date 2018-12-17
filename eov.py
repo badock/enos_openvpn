@@ -12,7 +12,8 @@ General options:
 
 Commands:
   deploy [<args>...]  Launch Enos OpenVPN
-  ansible             Make ansible actions
+  openvpn             Deploy OpenVPN
+  enos                Deploy enos
   cleanup             Cleans the current experiment directory
 
 See 'eov command --help' for more information
@@ -104,23 +105,55 @@ Options:
 
 
 @doc()
-def ansible(**kwargs):
+def openvpn(**kwargs):
     """
-Usage: eov ansible
+Usage: eov openvpn
 
-Run ansible tasks
+Deploy openvpn
     """
     hosts_file = 'current/hosts'
     if not (os.path.exists(hosts_file) and
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
         hosts = [host.strip() for host in open("current/hosts", 'r')]
-    logging.info("Running ansible")
-    exec_dir = os.path.dirname(os.path.realpath(__file__))
-    extra_vars = { 'exec_dir' : exec_dir , 'nodes' : hosts}
-    launch_playbook = os.path.join(ANSIBLE_PATH, 'launch.yml')
-    run_ansible([launch_playbook], 'current/hosts',
-                extra_vars=extra_vars)
+        logging.info("Running ansible")
+        exec_dir = os.path.dirname(os.path.realpath(__file__))
+        extra_vars = { 'exec_dir': exec_dir ,
+                       'nodes': hosts}
+        launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
+        run_ansible([launch_playbook], 'current/hosts',
+                    extra_vars=extra_vars)
+    else:
+        logging.error("No host to run onto.")
+
+
+@doc()
+def enos(g5k, **kwargs):
+    """
+Usage: eov enos [options]
+
+Deploy enos on hosts
+
+Options:
+    --g5k              Deploying on g5k [default: true]
+
+Deploy enos
+    """
+    hosts_file = 'current/hosts'
+    if not (os.path.exists(hosts_file) and
+    os.path.isfile(hosts_file) and
+    os.stat(hosts_file).st_size == 0):
+        hosts = [host.strip() for host in open("current/hosts", 'r')]
+        logging.info("Running ansible")
+        exec_dir = os.path.dirname(os.path.realpath(__file__))
+        extra_vars = { 'exec_dir': exec_dir,
+                       'nodes': hosts,
+                       'g5k': g5k}
+        launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
+        run_ansible([launch_playbook], 'current/hosts',
+                    extra_vars=extra_vars)
+    else:
+        logging.error("No host to run onto.")
 
 
 @doc()

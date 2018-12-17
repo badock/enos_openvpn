@@ -4,3 +4,34 @@
   copy:
     src: "{{ exec_dir }}/current/openvpn-shared-key.key"
     dest: /etc/openvpn/openvpn-shared-key.key
+
+# - name: Kill OpenVPN
+#   shell: pkill openvpn
+
+- name: Get tars
+  copy:
+    src: "{{ exec_dir }}/current/{{ inventory_hostname }}.tgz"
+    dest: "/root/{{ inventory_hostname }}.tgz"
+
+- name: Extract directory
+  unarchive:
+    src: "/root/{{ inventory_hostname }}.tgz"
+    dest: "/root/"
+    remote_src: yes
+
+
+- name: Using client.conf
+  shell: "openvpn --daemon client.conf >/dev/null"
+  args:
+    chdir: "root/"
+
+
+- name: Waiting a few seconds
+  pause:
+    seconds: 4
+
+
+- name: Using client1.conf
+  shell: "openvpn --daemon client1.conf >/dev/null"
+  args:
+    chdir: "root/client/"
