@@ -19,7 +19,7 @@
     - /var/lib/docker/volumes
     - /tmp/nova
     - /var/lib/nova
-  when: "{{ g5k }}"
+  when: g5k
 
 
 - name: Bindmounting docker
@@ -29,7 +29,7 @@
     opts: bind
     fstype: none
     state: present
-  when: "{{ g5k }}"
+  when: g5k
 
 
 - name: Bindmounting docker
@@ -39,7 +39,7 @@
     opts: bind
     fstype: none
     state: present
-  when: "{{ g5k }}"
+  when: g5k
 
 
 - name: Getting virtualenv
@@ -56,13 +56,17 @@
 - name: Piping
   shell: "virtualenv venv"
   args:
-    chdir: "enos"
-    creates: "enos/venv/bin/activate"
+    creates: "venv/bin/activate"
   when: inventory_hostname == openvpn_node
 
 
 - name:
   copy:
     src: "{{ exec_dir }}/reservation.yaml"
-    dest: /root/reservation.yaml
+    dest: reservation.yaml
+  when: inventory_hostname == openvpn_node
+
+
+- name:
+  shell: ". venv/bin/activate; enos deploy > /tmp/enos.logs"
   when: inventory_hostname == openvpn_node

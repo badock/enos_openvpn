@@ -4,13 +4,13 @@ tls-client
 dev tap
 # tcp-client protocol
 proto udp
-remote "{{ openvpn_node }}" 444
+remote {{ openvpn_node }} 444
 resolv-retry infinite
 #cipher AES-256-CBC
 # Keys
 ca ca.crt
-cert "{{ item }}".crt
-key "{{ item }}".key
+cert {{ item }}.crt
+key {{ item }}.key
 tls-auth ta.key 1
 # Security
 nobind

@@ -38,7 +38,9 @@
 
 
 - name: Starting OpenVPN service
-  shell: "openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/openvpn --config /etc/openvpn/{{ item }}"
+  shell: "openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/openvpn/server --config /etc/openvpn/{{ item }}"
+  args:
+    chdir: /etc/openvpn
   loop:
     - server.conf
     - server2.conf
@@ -58,11 +60,32 @@
 #     - 11.8.1.0/24
 #   when: inventory_hostname == openvpn_node
 
-- name: Templating docker0 interface fix file
+
+- name: Using client.conf
+  shell: "openvpn --daemon --config client.conf"
+  args:
+    chdir: "/root/{{ inventory_hostname }}/"
+  when: inventory_hostname != openvpn_node
+
+
+- name: Waiting a few seconds
+  pause:
+    seconds: 4
+
+
+- name: Using client1.conf
+  shell: "openvpn --daemon --config client1.conf"
+  args:
+    chdir: "/root/{{ inventory_hostname }}/"
+  when: inventory_hostname != openvpn_node
+
+
+- name: Creating docker0 interface fix file
   template:
     src: create_docker0.sh.j2
     dest: /root/create_docker0.sh
     mode: "u=rwx,g=r,o=r"
 
+
 - name: Executing docker0 interface fix file
-  shell: "./root/create_docker0.sh"
+  shell: "bash /root/create_docker0.sh"

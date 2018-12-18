@@ -75,19 +75,6 @@
     creates: "/etc/openvpn/easy-rsa/keys/ta.key"
 
 
-- name: Copying keys to the right folder
-  shell: "cp {{ item }} /etc/openvpn/"
-  args:
-    chdir: "/etc/openvpn/easy-rsa/"
-    creates: "/etc/openvpn/ta.key"
-  loop:
-    - keys/ca.crt
-    - keys/ta.key
-    - keys/server.crt
-    - keys/server.key
-    - keys/dh2048.pem
-
-
 - name: Creating directories
   file:
     path: "{{ item }}"
@@ -99,13 +86,25 @@
     - /etc/openvpn/server
 
 
-- name: Templating server configuration
+- name: Copying keys to the server folder
+  shell: "cp {{ item }} /etc/openvpn/server/"
+  args:
+    chdir: "/etc/openvpn/easy-rsa/keys"
+  loop:
+    - ca.crt
+    - ta.key
+    - server.key
+    - dh2048.pem
+    - server.crt
+
+
+- name: Creating server configuration
   template:
     src: server.conf.j2
     dest: /etc/openvpn/server.conf
 
 
-- name: Templating server2 configuration
+- name: Creating server2 configuration
   template:
     src: server2.conf.j2
     dest: /etc/openvpn/server2.conf
@@ -132,10 +131,10 @@
   loop: "{{ other_nodes }}"
 
 
-- name: Moving keys
+- name: Moving client keys
   shell: >
-    cp ca.crt
-    ta.key
+    cp easy-rsa/keys/ca.crt
+    easy-rsa/keys/ta.key
     easy-rsa/keys/{{ item }}.crt
     easy-rsa/keys/{{ item }}.key
     clientconf/{{ item }}/
@@ -145,14 +144,14 @@
   loop: "{{ other_nodes }}"
 
 
-- name: Templating client configuration
+- name: Creating client configuration
   template:
     src: client.conf.j2
     dest: "/etc/openvpn/clientconf/{{ item }}/client.conf"
   loop: "{{ other_nodes }}"
 
 
-- name: Templating client1 configuration
+- name: Creating client1 configuration
   template:
     src: client1.conf.j2
     dest: "/etc/openvpn/clientconf/{{ item }}/client1.conf"
