@@ -135,7 +135,7 @@ Usage: eov enos [options]
 Deploy enos on hosts
 
 Options:
-    --g5k              Deploying on g5k [default: true]
+    --g5k              Deploying on g5k [default: false]
 
 Deploy enos
     """
