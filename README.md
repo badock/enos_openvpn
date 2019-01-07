@@ -6,10 +6,10 @@ Deploy an OpenStack infrastructure via Enos, in which the management network and
 
 ## TLDR;
 
-Put the addresses of your servers in a *current/hosts file* (**not /tmp**), and run
+Put the addresses of your servers in a *current/hosts* file (**not /tmp**), and run
 
 ``` bash
-bash configure_ssh_connections.sh && bash configure_openvpn.sh && bash configure_enos.sh && bash run_enos.sh
+python eov.py deploy && python eov.py openvpn && python eov.py enos
 ```
 
 ## Installation
@@ -20,11 +20,13 @@ clone the project:
 git clone https://github.com/badock/enos_openvpn.git
 ```
 
-## Deploy OpenStack
+## Basic configuration
 
-### Configure the hosts that will be used
+You can use running machines (just below) or get some resources and deploy on g5k using the deploy command (second part)
 
-Put the servers' addresses in the tmp/uniq_hosts.txt, as follow:
+### Configure the hosts that will be used (without g5k)
+
+Put the servers' addresses in the *current/hosts* as follow:
 
 ``` bash
 jpastor@fnantes:~/enos_openvpn$ cat current/hosts
@@ -36,6 +38,8 @@ econome-4.nantes.grid5000.fr
 ```
 
 **Ensure that you can connect as root via SSH on each of these server.**
+
+### Get resources and deploy everything needed on g5k
 
 If you are using grid5000, use the *deploy* command to prepare the hosts.
 ``` bash
@@ -52,7 +56,7 @@ Options:
 ```
 
 
-#### OpenVPN
+### OpenVPN
 
 ``` bash
 Usage: eov openvpn
@@ -60,7 +64,7 @@ Usage: eov openvpn
 Deploy openvpn on resources from current/hosts
 ```
 
-### Configure enos
+## Configure enos
 
 We need to create a Python virtual environment on a service node, install enos and its dependencies and configure a reservation.yaml file for enos.
 
@@ -68,7 +72,7 @@ We need to create a Python virtual environment on a service node, install enos a
 
 Configure the reservation.yaml that uses the [*static*](https://enos.readthedocs.io/en/stable/provider/static.html) provider. You have to specify the nodes of your infrastructure (controllers nodes, network nodes, compute nodes) in the reservation.yaml file. Keep in mind that the IP addresses should be IPs of the management, which by convention is "11.8.0.0/24".
 
-### Run Enos
+## Run Enos
 
 Once all the previous steps have been **successfully** completed, simply run the following command:
 
@@ -82,7 +86,7 @@ Options:
 
 ```
 
-### (Bonus) fix live migrations
+## (Bonus) fix live migrations
 
 To enable live migrations, the hosts files of nova-libvirt containers must contain the addresses of all compute nodes of the OpenStack infrastructure that you deployed.
 
