@@ -11,8 +11,8 @@ General options:
   -h --help           Show this help message.
 
 Commands:
-  deploy [<args>...]  Launch Enos OpenVPN
-  openvpn             Deploy OpenVPN
+  deploy [<args>...]  Claim resources from g5k and deploy debian
+  openvpn             Deploy OpenVPN on resources
   enos                Deploy enos
   cleanup             Cleans the current experiment directory
 
@@ -49,13 +49,13 @@ def deploy(xp_name, walltime, cluster, nodes, reservation=None, **kwargs):
     """
 usage: eov deploy [options]
 
-Claim resources from G5k and launch the deployment
+Claim resources from G5k and deploy debian
 
 Options:
     -n, --xp-name NAME               Name of the experiment [default: enos_openvpn]
     -w, --walltime WALLTIME          Length, in time, of the experiment [default: 08:00:00]
     -c, --cluster CLUSTER            Cluster to deploy onto [default: ecotype]
-    -r, --reservation RESERVATION    When to make the reservation
+    -r, --reservation RESERVATION    When to make the reservation (format is 'yyyy-mm-dd hh:mm:ss')
     --nodes NUMBER                   Number of nodes [default: 5]
 
     """
@@ -109,7 +109,7 @@ def openvpn(**kwargs):
     """
 Usage: eov openvpn
 
-Deploy openvpn
+Deploy openvpn on resources from current/hosts
     """
     hosts_file = 'current/hosts'
     if not (os.path.exists(hosts_file) and
@@ -137,7 +137,6 @@ Deploy enos on hosts
 Options:
     --g5k              Deploying on g5k [default: false]
 
-Deploy enos
     """
     hosts_file = 'current/hosts'
     if not (os.path.exists(hosts_file) and
