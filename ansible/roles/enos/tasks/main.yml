@@ -8,6 +8,7 @@
     - python-dev
     - git
     - python-pip
+    - python3-pip
 
 
 - name:
@@ -51,7 +52,35 @@
   pip:
     name: git+https://github.com/beyondtheclouds/enos.git@stable/queens#egg=enos
     editable: true
+    executable: pip3
   when: inventory_hostname == openvpn_node
+
+
+- name: Generates ssh key if not present
+  local_action:
+    module: command ssh-keygen -b 4096 -q -t rsa -f '{{ exec_dir }}/current/ssh' -C '' -N ''
+    args:
+      creates: '{{ exec_dir }}/current/ssh'
+  run_once: true
+
+- name: Copy the private ssh key to hosts
+  copy:
+    src: "{{ exec_dir }}/current/ssh"
+    dest: /root/.ssh/ssh
+    mode: u+rw,g-rwx,o-rwx
+
+- name: Copy the public ssh key to hosts
+  copy:
+    src: "{{ exec_dir }}/current/ssh.pub"
+    dest: /root/.ssh/ssh.pub
+
+- name: Adding the key to authorized keys
+  shell: "cat /root/.ssh/ssh.pub >> .ssh/authorized_keys"
+
+- name: Copy ansible config file
+  copy:
+    src: ansible.cfg
+    dest: /root/ansible.cfg
 
 - name: Piping
   shell: "virtualenv venv"
@@ -60,13 +89,13 @@
   when: inventory_hostname == openvpn_node
 
 
-- name:
+- name: Adding reservation file
   copy:
     src: "{{ exec_dir }}/reservation.yaml"
     dest: reservation.yaml
   when: inventory_hostname == openvpn_node
 
 
-- name:
+- name: Executing enos
   shell: ". venv/bin/activate; enos deploy > /tmp/enos.logs"
   when: inventory_hostname == openvpn_node
