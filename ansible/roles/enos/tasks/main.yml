@@ -1,3 +1,8 @@
+
+- name: Installing docker
+  shell: (curl -sSL https://get.docker.com/ | sh)
+
+
 - name: Installing dependencies
   apt:
     name: "{{ item }}"
@@ -9,7 +14,6 @@
     - git
     - python-pip
     - python3-pip
-
 
 - name:
   file:
@@ -33,7 +37,7 @@
   when: g5k
 
 
-- name: Bindmounting docker
+- name: Bindmounting nova
   mount:
     path: /tmp/nova
     src: /var/lib/nova
@@ -48,12 +52,12 @@
     name: virtualenv
   when: inventory_hostname == openvpn_node
 
-- name: Getting enos
-  pip:
-    name: git+https://github.com/beyondtheclouds/enos.git@stable/queens#egg=enos
-    editable: true
-    executable: pip3
-  when: inventory_hostname == openvpn_node
+# - name: Getting enos
+#   pip:
+#     name: git+https://github.com/marie-donnie/enos.git@limit#egg=enos
+#     editable: true
+#     executable: pip3
+#   when: inventory_hostname == openvpn_node
 
 
 - name: Generates ssh key if not present
@@ -63,11 +67,12 @@
       creates: '{{ exec_dir }}/current/ssh'
   run_once: true
 
-- name: Copy the private ssh key to hosts
+- name: Copy the private ssh key to control
   copy:
     src: "{{ exec_dir }}/current/ssh"
     dest: /root/.ssh/ssh
     mode: u+rw,g-rwx,o-rwx
+  when: inventory_hostname == openvpn_node
 
 - name: Copy the public ssh key to hosts
   copy:
@@ -81,6 +86,7 @@
   copy:
     src: ansible.cfg
     dest: /root/ansible.cfg
+  when: inventory_hostname == openvpn_node
 
 - name: Piping
   shell: "virtualenv venv"

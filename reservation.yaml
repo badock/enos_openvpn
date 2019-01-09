@@ -115,3 +115,4 @@ kolla:
   kolla_install_type: source
   docker_namespace: beyondtheclouds
   enable_heat: "yes"
+  openstack_release: 6.1.1
