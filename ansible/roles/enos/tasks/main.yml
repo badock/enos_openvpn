@@ -1,6 +1,8 @@
 
 - name: Installing docker
   shell: (curl -sSL https://get.docker.com/ | sh)
+  args:
+    creates: docker.txt
 
 
 - name: Installing dependencies
@@ -14,6 +16,7 @@
     - git
     - python-pip
     - python3-pip
+
 
 - name:
   file:
@@ -52,12 +55,12 @@
     name: virtualenv
   when: inventory_hostname == openvpn_node
 
-# - name: Getting enos
-#   pip:
-#     name: git+https://github.com/marie-donnie/enos.git@limit#egg=enos
-#     editable: true
-#     executable: pip3
-#   when: inventory_hostname == openvpn_node
+- name: Getting enos
+  pip:
+    name: git+https://github.com/marie-donnie/enos.git@limit#egg=enos
+    editable: true
+    executable: pip3
+  when: inventory_hostname == openvpn_node
 
 
 - name: Generates ssh key if not present
@@ -99,9 +102,44 @@
   copy:
     src: "{{ exec_dir }}/reservation.yaml"
     dest: reservation.yaml
-  when: inventory_hostname == openvpn_node
+  when:
+    - inventory_hostname == openvpn_node
+    - not addition
 
 
 - name: Executing enos
   shell: ". venv/bin/activate; enos deploy > /tmp/enos.logs"
-  when: inventory_hostname == openvpn_node
+  when:
+    - inventory_hostname == openvpn_node
+    - not addition
+
+- name: Adding reservation file
+  copy:
+    src: "{{ exec_dir }}/current/reservation.yaml"
+    dest: reservation.yaml
+  when:
+    - inventory_hostname == openvpn_node
+    - addition
+
+# - name: Copy ansible config file
+#   copy:
+#     src: /tmp/src/enos/enos/inventories/multinode
+#     dest: current/multinode
+#     remote_src: yes
+#   when:
+#     - inventory_hostname == openvpn_node
+#     - addition
+
+- name: Executing enos up
+  shell: ". venv/bin/activate; enos up --limit > /tmp/enos.logs"
+  when:
+    - inventory_hostname == openvpn_node
+    - addition
+
+- name: Executing enos
+  shell: ". venv/bin/activate; enos kolla -- deploy --limit {{ addition }} > /tmp/enos.logs"
+  when:
+    - inventory_hostname == openvpn_node
+    - addition
+
+#   cp current/multinode /tmp/src/enos/enos/inventories/multinode

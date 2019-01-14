@@ -105,21 +105,29 @@ Options:
 
 
 @doc()
-def openvpn(**kwargs):
+def openvpn(add=None, **kwargs):
     """
-Usage: eov openvpn
+Usage: eov openvpn [options]
 
 Deploy openvpn on resources from current/hosts
+
+Options:
+    --add NODE         Add defined node
     """
     hosts_file = 'current/hosts'
     if not (os.path.exists(hosts_file) and
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
+        if add:
+            with open(hosts_file, 'a') as f:
+                logging.info("Adding %s to host file" % add)
+                f.write('\n%s' % add)
         hosts = [host.strip() for host in open("current/hosts", 'r')]
         logging.info("Running ansible")
         exec_dir = os.path.dirname(os.path.realpath(__file__))
         extra_vars = { 'exec_dir': exec_dir ,
-                       'nodes': hosts}
+                       'nodes': hosts,
+                       'addition': add }
         launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
         run_ansible([launch_playbook], 'current/hosts',
                     extra_vars=extra_vars)
@@ -128,7 +136,7 @@ Deploy openvpn on resources from current/hosts
 
 
 @doc()
-def enos(g5k, **kwargs):
+def enos(g5k, add=None, **kwargs):
     """
 Usage: eov enos [options]
 
@@ -136,23 +144,64 @@ Deploy enos on hosts
 
 Options:
     --g5k              Deploying on g5k [default: false]
+    --add NODE         Add defined node
 
     """
     hosts_file = 'current/hosts'
     if not (os.path.exists(hosts_file) and
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
-        hosts = [host.strip() for host in open("current/hosts", 'r')]
+        if add:
+            with open(hosts_file) as f:
+                if not (add in line for line in f):
+                    logging.warning("Adding %s to host file, "\
+                                    "did you ran openvpn?" % add)
+                    f.write('\n%s' % add)
+            _add_node(add)
+        hosts = [host.strip() for host in open(hosts_file, 'r')]
         logging.info("Running ansible")
         exec_dir = os.path.dirname(os.path.realpath(__file__))
         extra_vars = { 'exec_dir': exec_dir,
                        'nodes': hosts,
-                       'g5k': g5k}
+                       'g5k': g5k,
+                       'addition': add }
         launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
         run_ansible([launch_playbook], 'current/hosts',
                     extra_vars=extra_vars)
     else:
         logging.error("No host to run onto.")
+
+
+def _add_node(add):
+    current_nodes = 'current/reservation.yaml'
+    if not (os.path.exists(current_nodes) and
+    os.path.isfile(current_nodes)):
+        shutil.copy2('reservation.yaml',
+                     'current/reservation.yaml')
+    with open(current_nodes, "r") as f:
+        for line in f:
+            if add in line:
+                return None
+    with open(current_nodes, "r") as f:
+        reservation = yaml.load(f)
+    all_computes = []
+    for comp in reservation['resources']['compute']:
+	number = int(comp['alias'].replace('compute-node', ''))
+        all_computes.append(number)
+    number_of_computes = max(all_computes)
+    # we need a new compute node.
+    #its number is the number of node plus one
+    alias = 'compute-node%d' % (number_of_computes + 1)
+    # its address is the same but they start at 4
+    address = '11.8.0.%d' % (number_of_computes+4)
+    new_node = {'alias': alias,
+                'user': 'root',
+                'address': address,
+                'node': add}
+    logging.info("Adding new node for %s: %s" % (add, new_node))
+    reservation['resources']['compute'].append(new_node)
+    with open(current_nodes, 'w') as f:
+        yaml.dump(reservation, f)
 
 
 @doc()
@@ -180,6 +229,7 @@ if __name__ == '__main__':
     args = docopt(__doc__,
                   version='Enos OpenVPN version 1.0.0',
                   options_first=True)
+
     argv = [args['<command>']] + args['<args>']
 
     doc_lookup(args['<command>'], argv)

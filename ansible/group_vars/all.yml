@@ -1,3 +1,3 @@
 openvpn_node: "{{ groups['all'][0] }}"
 
-other_nodes: "{{ groups['all'][1:] }}"
+other_nodes: "{{ groups['all'][1:] if not addition else [addition] }}"

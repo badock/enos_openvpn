@@ -4,6 +4,7 @@
   shell: openvpn --genkey --secret /etc/openvpn/openvpn-shared-key.key
   args:
     creates: /etc/openvpn/openvpn-shared-key.key
+  when: not addition
 
 - name: Set ip forwarding on in /proc and in the sysctl file
   sysctl:
@@ -12,6 +13,7 @@
     sysctl_set: yes
     state: present
     reload: yes
+  when: not addition
 
 
 - name: Iptables
@@ -24,6 +26,7 @@
   loop:
     - 11.8.0.0/24
     - 11.8.1.0/24
+  when: not addition
 
 
 - name: Copy easy-rsa
@@ -31,6 +34,7 @@
     src: /usr/share/easy-rsa/
     dest: /etc/openvpn/easy-rsa/
   delegate_to: "{{ inventory_hostname }}"
+  when: not addition
 
 
 - name: Linking openssl conf
@@ -38,13 +42,15 @@
     src: /etc/openvpn/easy-rsa/openssl-1.0.0.cnf
     dest: /etc/openvpn/easy-rsa/openssl.cnf
     state: link
+  when: not addition
 
 
 - name: Preparing the keys directory
-  shell: ". ./vars; ./clean-all >/dev/null"
+  shell: "touch /etc/openvpn/easy-rsa/index.txt; . ./vars; ./clean-all >/dev/null"
   args:
     chdir: "/etc/openvpn/easy-rsa/"
     creates: "/etc/openvpn/easy-rsa/index.txt"
+  when: not addition
 
 
 - name: Generating Diffie-Hellman parameters (takes some time)
@@ -52,6 +58,7 @@
   args:
     chdir: "/etc/openvpn/easy-rsa/"
     creates: "/etc/openvpn/easy-rsa/keys/dh2048.pem"
+  when: not addition
 
 
 - name: Building CA
@@ -59,6 +66,7 @@
   args:
     chdir: "/etc/openvpn/easy-rsa/"
     creates: "/etc/openvpn/easy-rsa/keys/ca.key"
+  when: not addition
 
 
 - name: Generating server certificate and key
@@ -66,6 +74,7 @@
   args:
     chdir: "/etc/openvpn/easy-rsa/"
     creates: "/etc/openvpn/easy-rsa/keys/server.key"
+  when: not addition
 
 
 - name: Generating CRL file
@@ -73,6 +82,7 @@
   args:
     chdir: "/etc/openvpn/easy-rsa/"
     creates: "/etc/openvpn/easy-rsa/keys/ta.key"
+  when: not addition
 
 
 - name: Creating directories
@@ -84,6 +94,7 @@
     - /etc/openvpn/jail/tmp
     - /etc/openvpn/clientconf
     - /etc/openvpn/server
+  when: not addition
 
 
 - name: Copying keys to the server folder
@@ -96,18 +107,21 @@
     - server.key
     - dh2048.pem
     - server.crt
+  when: not addition
 
 
 - name: Creating server configuration
   template:
     src: server.conf.j2
     dest: /etc/openvpn/server.conf
+  when: not addition
 
 
 - name: Creating server2 configuration
   template:
     src: server2.conf.j2
     dest: /etc/openvpn/server2.conf
+  when: not addition
 
 
 - name: Getting openvpn key to put on other nodes
