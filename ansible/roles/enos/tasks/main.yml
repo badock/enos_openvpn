@@ -1,6 +1,6 @@
 
 - name: Installing docker
-  shell: (curl -sSL https://get.docker.com/ | sh)
+  shell: (curl -sSL https://get.docker.com/ | sh; touch docker.txt)
   args:
     creates: docker.txt
 
@@ -60,6 +60,7 @@
     name: git+https://github.com/marie-donnie/enos.git@limit#egg=enos
     editable: true
     executable: pip3
+    # extra_args: "--target {{ enos_dir }}"
   when: inventory_hostname == openvpn_node
 
 
@@ -97,6 +98,7 @@
     creates: "venv/bin/activate"
   when: inventory_hostname == openvpn_node
 
+  # WHEN RUNNING FIRST TIME (not adding a node)
 
 - name: Adding reservation file
   copy:
@@ -113,6 +115,34 @@
     - inventory_hostname == openvpn_node
     - not addition
 
+- stat:
+    path: current/multinode
+  register: multinode
+  when:
+      - inventory_hostname == openvpn_node
+      - not addition
+
+- debug:
+    msg: "Found multinode file"
+  when:
+    - inventory_hostname == openvpn_node
+    - not addition
+    - multinode.stat.exists
+
+
+- name: Fetch multinode file
+  fetch:
+    src: current/multinode
+    dest: "{{ exec_dir }}/current/multinode"
+    flat: yes
+  when:
+    - inventory_hostname == openvpn_node
+    - not addition
+    - multinode.stat.exists
+
+
+    # ADDITION
+
 - name: Adding reservation file
   copy:
     src: "{{ exec_dir }}/current/reservation.yaml"
@@ -121,14 +151,15 @@
     - inventory_hostname == openvpn_node
     - addition
 
-# - name: Copy ansible config file
-#   copy:
-#     src: /tmp/src/enos/enos/inventories/multinode
-#     dest: current/multinode
-#     remote_src: yes
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - addition
+
+- name: Copy multinode file
+  copy:
+    src: "{{ exec_dir }}/current/multinode"
+    dest: "{{ enos_dir}}/enos/enos/inventories/multinode"
+  when:
+    - inventory_hostname == openvpn_node
+    - addition
+
 
 - name: Executing enos up
   shell: ". venv/bin/activate; enos up --limit > /tmp/enos.logs"
@@ -136,10 +167,9 @@
     - inventory_hostname == openvpn_node
     - addition
 
+
 - name: Executing enos
   shell: ". venv/bin/activate; enos kolla -- deploy --limit {{ addition }} > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
     - addition
-
-#   cp current/multinode /tmp/src/enos/enos/inventories/multinode

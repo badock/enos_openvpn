@@ -135,8 +135,10 @@ Options:
         logging.error("No host to run onto.")
 
 
+# pip target is bugged, so for now, enos dir will be in /tmp/src
+# https://github.com/pypa/pip/issues/4390
 @doc()
-def enos(g5k, add=None, **kwargs):
+def enos(g5k, enos_dir, add=None, **kwargs):
     """
 Usage: eov enos [options]
 
@@ -145,9 +147,12 @@ Deploy enos on hosts
 Options:
     --g5k              Deploying on g5k [default: false]
     --add NODE         Add defined node
+    --enos_dir DIR     Define enos install directory [default: /tmp/src]
 
     """
     hosts_file = 'current/hosts'
+    extra_vars = { 'g5k': g5k,
+                   'enos_dir': enos_dir}
     if not (os.path.exists(hosts_file) and
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
@@ -157,14 +162,15 @@ Options:
                     logging.warning("Adding %s to host file, "\
                                     "did you ran openvpn?" % add)
                     f.write('\n%s' % add)
-            _add_node(add)
+            alias, address = _add_node_in_reservation(add)
+            _add_node_in_multinode(alias, address)
+            add = alias
         hosts = [host.strip() for host in open(hosts_file, 'r')]
         logging.info("Running ansible")
         exec_dir = os.path.dirname(os.path.realpath(__file__))
-        extra_vars = { 'exec_dir': exec_dir,
-                       'nodes': hosts,
-                       'g5k': g5k,
-                       'addition': add }
+        extra_vars.update({'exec_dir': exec_dir,
+                           'nodes': hosts,
+                           'addition': add})
         launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
         run_ansible([launch_playbook], 'current/hosts',
                     extra_vars=extra_vars)
@@ -172,27 +178,32 @@ Options:
         logging.error("No host to run onto.")
 
 
-def _add_node(add):
+def _add_node_in_reservation(add):
     current_nodes = 'current/reservation.yaml'
     if not (os.path.exists(current_nodes) and
     os.path.isfile(current_nodes)):
         shutil.copy2('reservation.yaml',
                      'current/reservation.yaml')
+    node_present = False
     with open(current_nodes, "r") as f:
         for line in f:
             if add in line:
-                return None
+                node_present = True
     with open(current_nodes, "r") as f:
         reservation = yaml.load(f)
+    if node_present:
+        for compute in reservation['resources']['compute']:
+            if 'node' in compute and compute['node'] == add:
+                return compute['alias'], compute['address']
     all_computes = []
-    for comp in reservation['resources']['compute']:
-	number = int(comp['alias'].replace('compute-node', ''))
+    for compute in reservation['resources']['compute']:
+	number = int(compute['alias'].replace('compute-node', ''))
         all_computes.append(number)
     number_of_computes = max(all_computes)
     # we need a new compute node.
     #its number is the number of node plus one
     alias = 'compute-node%d' % (number_of_computes + 1)
-    # its address is the same but they start at 4
+    # its address is the same but the computes addresses start at 4
     address = '11.8.0.%d' % (number_of_computes+4)
     new_node = {'alias': alias,
                 'user': 'root',
@@ -202,6 +213,33 @@ def _add_node(add):
     reservation['resources']['compute'].append(new_node)
     with open(current_nodes, 'w') as f:
         yaml.dump(reservation, f)
+    return alias, address
+
+
+def _add_node_in_multinode(alias, address):
+    multinode_file = 'current/multinode'
+    # putting every line in a list
+    try:
+        with open(multinode_file) as f:
+            lines = f.readlines()
+    except:
+        logging.error("Could not read file %s" % multinode_file)
+    # removing all lines with compute-nodes
+    multinode_no_compute = []
+    for line in lines:
+        if not line.startswith('compute-node'):
+            multinode_no_compute.append(line)
+    # adding new node
+    multinode_final = []
+    node_line = """%s ansible_host=%s ansible_ssh_user=root ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' network_interface=tap0 enos_devices="['tap0']"\n""" % (alias, address)
+    for line in multinode_no_compute:
+        multinode_final.append(line)
+        if line.startswith('[compute]') or line.startswith('[default_group]'):
+            multinode_final.append(node_line)
+    # putting everything back into the file
+    with open(multinode_file, 'w') as f:
+        for line in multinode_final :
+            f.write("%s" % line)
 
 
 @doc()

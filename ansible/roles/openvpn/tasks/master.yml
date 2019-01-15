@@ -46,7 +46,7 @@
 
 
 - name: Preparing the keys directory
-  shell: "touch /etc/openvpn/easy-rsa/index.txt; . ./vars; ./clean-all >/dev/null"
+  shell: ". ./vars; ./clean-all >/dev/null; touch /etc/openvpn/easy-rsa/index.txt"
   args:
     chdir: "/etc/openvpn/easy-rsa/"
     creates: "/etc/openvpn/easy-rsa/index.txt"
