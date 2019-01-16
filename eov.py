@@ -29,6 +29,7 @@ import yaml
 import time
 
 from docopt import docopt
+from flask import Flask
 import execo
 import execo_g5k as ex5
 import execo_g5k.api_utils as api
@@ -43,6 +44,9 @@ doc_lookup)
 logger = logging.getLogger('logger')
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
+# Creating a Flask instance
+
+app = Flask(__name__)
 
 @doc()
 def deploy(xp_name, walltime, cluster, nodes, reservation=None, **kwargs):
@@ -208,7 +212,7 @@ def _add_node_in_reservation(add):
     new_node = {'alias': alias,
                 'user': 'root',
                 'address': address,
-                'node': add}
+                'node': str(add)}
     logging.info("Adding new node for %s: %s" % (add, new_node))
     reservation['resources']['compute'].append(new_node)
     with open(current_nodes, 'w') as f:
@@ -252,6 +256,20 @@ Remove everything in the current directory
     shutil.rmtree('current')
     os.makedirs('current')
 
+
+@app.route('/')
+def ssh_public_key():
+    public_key_path = '%s/.ssh/id_rsa.pub' % os.path.expanduser("~")
+    with open(public_key_path) as f:
+        lines = f.readlines()
+    return lines[0]
+
+
+@app.route('/addnode/<g5k>/<add>')
+def add_node(g5k, add):
+    openvpn(add)
+    enos(g5k=g5k, enos_dir='/tmp/src', add=add)
+    return 'You have been added' % add
 
 @doc()
 def help(**kwargs):
