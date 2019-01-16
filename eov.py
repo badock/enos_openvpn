@@ -269,7 +269,7 @@ def ssh_public_key():
 def add_node(g5k, add):
     openvpn(add)
     enos(g5k=g5k, enos_dir='/tmp/src', add=add)
-    return 'You have been added' % add
+    return 'You have been added'
 
 @doc()
 def help(**kwargs):
