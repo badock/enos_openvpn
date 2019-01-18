@@ -16,7 +16,7 @@ Commands:
   enos                Deploy enos
   cleanup             Cleans the current experiment directory
 
-See 'eov command --help' for more information
+See 'eov <command> --help' for more information
 on a specific command.
 
 """
@@ -29,7 +29,7 @@ import yaml
 import time
 
 from docopt import docopt
-from flask import Flask
+from flask import Flask, send_from_directory
 import execo
 import execo_g5k as ex5
 import execo_g5k.api_utils as api
@@ -267,9 +267,15 @@ def ssh_public_key():
 
 @app.route('/addnode/<g5k>/<add>')
 def add_node(g5k, add):
-    openvpn(add)
-    enos(g5k=g5k, enos_dir='/tmp/src', add=add)
-    return 'You have been added'
+    if g5k.lower() == "true" or g5k.lower() == "g5k":
+        g5k = True
+    else:
+        g5k = False
+    return send_from_directory('current', 'multinode')
+    # openvpn(add)
+    # enos(g5k=g5k, enos_dir='/tmp/src', add=add)
+    # return 'You have been added to Openstack\n'
+
 
 @doc()
 def help(**kwargs):

@@ -4,6 +4,34 @@
 
 Deploy an OpenStack infrastructure via Enos, in which the management network and the production network are implemented with two OpenVPN networks.
 
+```
+          +-------------------------------------------------------------------------------------+
+          |                                ENOS/                                                 |
+   MINIMUM|        MASTER                  OPENVPN_NODE               CONTROL        NET.       |
+   INSTALL|   +--------------+            +-----------+              +-------+     +-------+    |
+          |   |              |            |           |              |       |     |       |    |
+          |   |              |            |           |              |       |     |       |    |
+          |   | enos openvpn |            |           |              |       |     |       |    |
+          |   |              |            |           |              +-------+     +-------+    |
+          |   |              |            |           |                         +---------------+
+          |   |              |            +-----------+                C1       |
+          |   |              |                                       +-------+  |
+          |   +--------------+                                       |       |  |
+          |               ^                                          |       |  |
+          |               |                                          |       |  |
+          |               |                                          +-------+  |
+          |               |                                                     |
+          +---------------------------------------------------------------------+
+                          |
+                          |                           x.x.x.x
+                          |                          +-------+
+                          |                          |       |
+						  +--------------------------+       |
+                              request addition       |       |
+                                 to openvpn          +-------+
+                               and openstack
+```
+
 ## TLDR;
 
 Put the addresses of your servers in a *current/hosts* file (**not /tmp**), and run
@@ -97,6 +125,7 @@ bash fix_live_migration.sh
 ```
 
 ## Add a node
+
 
 On the node where you deployed enos openvpn, use
 ``` bash
