@@ -14,7 +14,7 @@ python eov.py deploy && python eov.py openvpn && python eov.py enos
 
 ## Installation
 
-clone the project:
+Clone the project:
 
 ```
 git clone https://github.com/badock/enos_openvpn.git
@@ -95,3 +95,34 @@ To do so, run the following script:
 ``` bash
 bash fix_live_migration.sh
 ```
+
+## Add a node
+
+On the node where you deployed enos openvpn, use
+``` bash
+export FLASK_APP=eov.py
+flask run --host=0.0.0.0
+```
+This allows to accept requests from other nodes.
+
+Run the node normally. To get one on g5k, you can use for example:
+``` bash
+oarsub -I -l nodes=1,walltime=<TIME_OF_NODE_RUNNING> -p "cluster='<CLUSTER>'" -t deploy
+kadeploy3 -e debian9-x64-nfs -f $OAR_NODE_FILE -k
+```
+Then ssh on it.
+
+If the node is not on g5k, you will need to get the public key from the "master" node:
+``` bash
+curl http://<MASTER_IP>:5000/ >> .ssh/authorized_keys
+```
+This will get the public key from the master node and add it to autorized keys.
+
+Then, you just have to request to be added to the openstack with
+``` bash
+http://<MASTER_IP>:5000/addnode/<G5K>/<NODE_IP>
+```
+Where:
+* `MASTER_IP` is the ip of the master node (where you have ran enos openvpn, you can get it with `ip a` on the master node).
+* `G5K` is a boolean (True or False), whether the node is on g5k or not
+* `NODE_IP` is the ip of the node you want to add

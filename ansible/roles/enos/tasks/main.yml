@@ -36,7 +36,7 @@
     src: /var/lib/docker/volumes
     opts: bind
     fstype: none
-    state: present
+    state: mounted
   when: g5k
 
 
@@ -46,7 +46,7 @@
     src: /var/lib/nova
     opts: bind
     fstype: none
-    state: present
+    state: mounted
   when: g5k
 
 
