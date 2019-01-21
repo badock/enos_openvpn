@@ -20,8 +20,8 @@ def doc(doc_param=None):
             # Format the arguments for convenient use
             new_kwargs = deepcopy(kwargs)
             for k, v in kwargs.items():
-                if k.startswith('-'):
-                    new_kwargs[k.lstrip('-').replace('-', '_')] = v
+                k = k.lower()
+                new_kwargs[k.lstrip('-').replace('-', '_')] = v
             # Proceeds with the function execution
             fn(*args, **new_kwargs)
         DOC_GLOBAL[fn.__name__] = decorated
