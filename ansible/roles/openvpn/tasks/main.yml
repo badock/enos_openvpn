@@ -27,14 +27,24 @@
     - /etc/openvpn/keys
 
 
-- name: Master node
-  include: master.yml
-  when: inventory_hostname == openvpn_node
+- name: Preparing master node when not adding node
+  include: not_addition.yml
+  when:
+    - not addition
+    - inventory_hostname == openvpn_node
+
+
+- name: Preparing master node
+  include: openvpn_node.yml
+  when:
+    - inventory_hostname == openvpn_node
 
 
 - name: Other nodes
   include: others.yml
-  when: inventory_hostname != openvpn_node
+  when:
+    - inventory_hostname != openvpn_node
+    # - not addition
 
 
 - name: Starting OpenVPN service
@@ -47,20 +57,6 @@
   when:
     - inventory_hostname == openvpn_node
     - not addition
-
-
-# Line 309 & 310 of openvpn_all_in_one, but already executed on master
-# - name: Masquerading
-#   iptables:
-#     table: nat
-#     chain: POSTROUTING
-#     source: "{{ item }}"
-#     out_interface: eno1
-#     jump: MASQUERADE
-#   loop:
-#     - 11.8.0.0/24
-#     - 11.8.1.0/24
-#   when: inventory_hostname == openvpn_node
 
 
 - name: Using client.conf

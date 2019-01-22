@@ -5,8 +5,6 @@
     src: "{{ exec_dir }}/current/openvpn-shared-key.key"
     dest: /etc/openvpn/openvpn-shared-key.key
 
-# - name: Kill OpenVPN
-#   shell: pkill openvpn
 
 - name: Get tars
   copy:
