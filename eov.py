@@ -271,7 +271,8 @@ def add_node(g5k, add):
         g5k = True
     else:
         g5k = False
-    return send_from_directory('current', 'multinode')
+    files = '%s.tar.gz' % add
+    return send_from_directory('current', files)
     # openvpn(add)
     # enos(g5k=g5k, enos_dir='/tmp/src', add=add)
     # return 'You have been added to Openstack\n'

@@ -22,11 +22,8 @@ on a specific command.
 """
 
 import os
-import shutil
-import sys
+import tarfile
 import logging
-import yaml
-import time
 import requests
 
 from docopt import docopt
@@ -42,17 +39,17 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(m
 
 
 @doc()
-def add_ssh():
+def add_ssh(master, **kwargs):
 
     """
-Usage: client add_ssh <master>
+Usage: client add_ssh MASTER
 
-Add master ssh key to the node. <master> is the ip of the master node
+Add master ssh key to the node. MASTER is the ip of the master node
     """
-    key = requests.get("http://%s:5000/" % master)
+    key = requests.get("http://%s/" % master)
     authorized_keys = '%s/.ssh/authorized_keys' % os.path.expanduser("~")
-    with open(authorized_key, "a") as f:
-        f.write(key)
+    with open(authorized_keys, "a") as f:
+        f.write(key.content)
 
 
 @doc()
@@ -68,12 +65,15 @@ Options:
     --g5k               Add if the node is on g5k [default: False]
     """
     try:
-        url = "http://%s:5000/addnode/%s/%s" % (master, g5k, name)
+        url = "http://%s/addnode/%s/%s" % (master, g5k, name)
         result = requests.get(url)
-        print(result)
+        files = '%s.tar.gz' % name
+        open(files, 'wb').write(result.content)
+        tar = tarfile.open(files)
+        tar.extractall()
+        tar.close()
     except:
         logging.info("Encountered an error while getting file")
-
 
 
 @doc()

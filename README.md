@@ -6,7 +6,7 @@ Deploy an OpenStack infrastructure via Enos, in which the management network and
 
 ```
           +-------------------------------------------------------------------------------------+
-          |                                ENOS/                                                 |
+          |                                ENOS/                                                |
    MINIMUM|        MASTER                  OPENVPN_NODE               CONTROL        NET.       |
    INSTALL|   +--------------+            +-----------+              +-------+     +-------+    |
           |   |              |            |           |              |       |     |       |    |
