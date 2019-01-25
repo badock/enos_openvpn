@@ -1,20 +1,23 @@
 ---
 
-- name: Copy shared key
-  copy:
-    src: "{{ exec_dir }}/current/openvpn-shared-key.key"
-    dest: /etc/openvpn/openvpn-shared-key.key
-
 
 - name: Get tars
   copy:
     src: "{{ exec_dir }}/current/{{ inventory_hostname }}.tar.gz"
     dest: "/root/{{ inventory_hostname }}.tar.gz"
 
+
 - name: Extract directory
   unarchive:
     src: "/root/{{ inventory_hostname }}.tar.gz"
     dest: "/root/"
+    remote_src: yes
+
+
+- name: Copy shared key
+  copy:
+    src: "/root/{{ inventory_hostname }}/openvpn-shared-key.key"
+    dest: /etc/openvpn/openvpn-shared-key.key
     remote_src: yes
 
 

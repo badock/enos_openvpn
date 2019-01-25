@@ -1,7 +1,7 @@
-- name: Getting openvpn key to put on other nodes
-  fetch:
-    src: /etc/openvpn/openvpn-shared-key.key
-    dest: "{{ exec_dir }}/current/openvpn-shared-key.key"
+# - name: Getting openvpn key to put on other nodes
+#   fetch:
+#     src: /etc/openvpn/openvpn-shared-key.key
+#     dest: "{{ exec_dir }}/current/openvpn-shared-key.key"
 
 
 - name: Generating clients certificates and keys
@@ -25,6 +25,7 @@
     easy-rsa/keys/ta.key
     easy-rsa/keys/{{ item }}.crt
     easy-rsa/keys/{{ item }}.key
+    /etc/openvpn/openvpn-shared-key.key
     clientconf/{{ item }}/
   args:
     chdir: "/etc/openvpn/"
