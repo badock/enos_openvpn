@@ -26,3 +26,20 @@
     src: delete_route.sh
     dest: /root/delete_route.sh
     mode: "u=rwx,g=r,o=r"
+
+
+- name: Using client.conf
+  shell: "openvpn --daemon --config client.conf"
+  args:
+    chdir: "/root/{{ inventory_hostname }}/"
+
+
+- name: Waiting a few seconds
+  pause:
+    seconds: 4
+
+
+- name: Using client1.conf
+  shell: "openvpn --daemon --config client1.conf"
+  args:
+    chdir: "/root/{{ inventory_hostname }}/"

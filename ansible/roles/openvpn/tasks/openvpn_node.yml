@@ -61,3 +61,14 @@
     dest: "{{ exec_dir }}/current/"
     flat: yes
   loop: "{{ other_nodes }}"
+
+
+- name: Starting OpenVPN service
+  shell: "openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/openvpn/server --config /etc/openvpn/{{ item }}"
+  args:
+    chdir: /etc/openvpn
+  loop:
+    - server.conf
+    - server2.conf
+  when:
+    - not addition
