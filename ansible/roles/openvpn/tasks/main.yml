@@ -47,37 +47,6 @@
     # - not addition
 
 
-- name: Starting OpenVPN service
-  shell: "openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/openvpn/server --config /etc/openvpn/{{ item }}"
-  args:
-    chdir: /etc/openvpn
-  loop:
-    - server.conf
-    - server2.conf
-  when:
-    - inventory_hostname == openvpn_node
-    - not addition
-
-
-- name: Using client.conf
-  shell: "openvpn --daemon --config client.conf"
-  args:
-    chdir: "/root/{{ inventory_hostname }}/"
-  when: inventory_hostname in other_nodes
-
-
-- name: Waiting a few seconds
-  pause:
-    seconds: 4
-
-
-- name: Using client1.conf
-  shell: "openvpn --daemon --config client1.conf"
-  args:
-    chdir: "/root/{{ inventory_hostname }}/"
-  when: inventory_hostname in other_nodes
-
-
 - name: Creating docker0 interface fix file
   template:
     src: create_docker0.sh.j2
