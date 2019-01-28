@@ -123,9 +123,14 @@ Options:
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
         if add:
-            with open(hosts_file, 'a') as f:
-                logging.info("Adding %s to host file" % add)
-                f.write('\n%s' % add)
+            logging.info("You requested to add %s to openvpn" % add)
+            with open(hosts_file, "r+") as f:
+                for line in f:
+                    if add in line:
+                        break
+                else:
+                    logging.info("Adding %s to host file" % add)
+                    f.write('\n%s' % add)
         hosts = [host.strip() for host in open("current/hosts", 'r')]
         logging.info("Running ansible")
         exec_dir = os.path.dirname(os.path.realpath(__file__))
@@ -275,9 +280,10 @@ def add_node(g5k, add):
         g5k = True
     else:
         g5k = False
+    openvpn(add)
     files = '%s.tar.gz' % add
     return send_from_directory('current', files)
-    # openvpn(add)
+
     # enos(g5k=g5k, enos_dir='/tmp/src', add=add)
     # return 'You have been added to Openstack\n'
 
