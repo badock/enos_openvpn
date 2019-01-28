@@ -251,10 +251,14 @@ def cleanup(**kwargs):
     """
 Usage: eov cleanup
 
-Remove everything in the current directory
+Remove temporary files in the 'current' directory
     """
-    shutil.rmtree('current')
-    os.makedirs('current')
+    current = "current"
+    for root, dirs, files in os.walk(current):
+        for fil in files:
+            if fil != ".gitignore":
+                os.remove(os.path.join(root, fil))
+    logging.info("Cleaned up current directory")
 
 
 @app.route('/')
