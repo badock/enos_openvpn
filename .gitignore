@@ -141,7 +141,6 @@ Temporary Items
 .apdisk
 
 
-
 venv/
-current/
+ansible/current/
 *.retry
