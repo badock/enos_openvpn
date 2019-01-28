@@ -43,7 +43,7 @@
 - name: Other nodes
   include: others.yml
   when:
-    - inventory_hostname != openvpn_node
+    - inventory_hostname in other_nodes
     # - not addition
 
 
