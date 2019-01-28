@@ -7,5 +7,8 @@ docopt
 # to expose the api
 flask
 
+# to be able to request the api
+requests
+
 # enoslib for running ansible smoothly
 -e git+https://github.com/BeyondTheClouds/enoslib.git@master#egg=Enoslib
