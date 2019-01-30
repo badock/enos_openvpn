@@ -53,10 +53,11 @@ Add master ssh key to the node. MASTER is the ip of the master node
     authorized_keys = '%s/.ssh/authorized_keys' % os.path.expanduser("~")
     with open(authorized_keys, "a") as f:
         f.write(key.content)
+    logging.info("%s can now ssh on this machine" % master)
 
 
 @doc()
-def openvpn(master, name, g5k=False, **kwargs):
+def openvpn(master, name, **kwargs):
 
     """
 Usage: client openvpn MASTER [options]
@@ -65,15 +66,16 @@ Connect to the openvpn network. <master> is the ip of the master node
 
 Options:
     -n, --name NAME     Name of the node to add [default: new_node]
-    --g5k               Add if the node is on g5k [default: False]
     """
     # Get file content from master node
     try:
-        url = "http://%s/addnode/%s/%s" % (master, g5k, name)
-        logging.info("Getting the required files")
+        url = "http://%s/openvpn/%s" % (master, name)
+        logging.info("Getting the required files and installing dependencies")
         result = requests.get(url)
-    except:
+    except OSError as error:
+        logging.error(error)
         logging.error("Encountered an error while getting file")
+        raise
     # Put the content into a tar
     files = '%s.tar.gz' % name
     open(files, 'wb').write(result.content)
@@ -82,8 +84,10 @@ Options:
         tar = tarfile.open(files)
         tar.extractall()
         tar.close()
-    except:
+    except OSError as error:
+        logging.error(error)
         logging.error("The files could not be extracted")
+        raise
     # Put openvpn shared key at the proper place, i.e.
     # /etc/openvpn/openvpn-shared-key.key
     shutil.move("%s/openvpn-shared-key.key" % name,
@@ -107,6 +111,30 @@ Options:
                     "/root/create_docker0.sh")
     os.chmod("/root/create_docker0.sh", 0o744)
     subprocess.call(['/root/create_docker0.sh'])
+
+
+@doc()
+def enos(master, name, action, g5k=False, **kwargs):
+
+    """
+Usage: client enos MASTER [options]
+
+Join the existing Openstack. <master> is the ip of the master node
+
+Options:
+    -n, --name NAME      Name of the node to act on [default: new_node]
+    --g5k                Specify if the node is on g5k [default: False]
+    -a, --action ACTION  Action to run
+    """
+    # Request to be added
+    try:
+        url = "http://%s/enos/%s/%s/%s" % (master, action, g5k, name)
+        logging.info("Executing %s" % action)
+        result = requests.get(url)
+    except Exception as error:
+        logging.error("Encountered an error while adding the node")
+        logging.error(error)
+        raise
 
 
 @doc()

@@ -9,7 +9,7 @@
   apt:
     name: "{{ item }}"
     state: present
-    update_cache: yes
+    # update_cache: yes
   with_items:
     - python
     - python-dev
@@ -53,7 +53,10 @@
 - name: Getting virtualenv
   pip:
     name: virtualenv
-  when: inventory_hostname == openvpn_node
+  when:
+    - inventory_hostname == openvpn_node
+    - not action_type
+
 
 - name: Getting enos
   pip:
@@ -61,7 +64,9 @@
     editable: true
     executable: pip3
     # extra_args: "--target {{ enos_dir }}"
-  when: inventory_hostname == openvpn_node
+  when:
+    - inventory_hostname == openvpn_node
+    - not action_type
 
 
 - name: Generates ssh key if not present
@@ -70,35 +75,47 @@
     args:
       creates: '{{ exec_dir }}/current/ssh'
   run_once: true
+  when: (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
 - name: Copy the private ssh key to control
   copy:
     src: "{{ exec_dir }}/current/ssh"
     dest: /root/.ssh/ssh
     mode: u+rw,g-rwx,o-rwx
-  when: inventory_hostname == openvpn_node
+  when: (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
+
 
 - name: Copy the public ssh key to hosts
   copy:
     src: "{{ exec_dir }}/current/ssh.pub"
     dest: /root/.ssh/ssh.pub
+  when: (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
+
 
 - name: Adding the key to authorized keys
   shell: "cat /root/.ssh/ssh.pub >> .ssh/authorized_keys"
+  when: (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
+
+
+  # WHEN RUNNING FIRST TIME (not adding a node)
 
 - name: Copy ansible config file
   copy:
     src: ansible.cfg
     dest: /root/ansible.cfg
-  when: inventory_hostname == openvpn_node
+  when:
+    - inventory_hostname == openvpn_node
+    - not action_type
+
 
 - name: Piping
   shell: "virtualenv venv"
   args:
     creates: "venv/bin/activate"
-  when: inventory_hostname == openvpn_node
+  when:
+    - inventory_hostname == openvpn_node
+    - not action_type
 
-  # WHEN RUNNING FIRST TIME (not adding a node)
 
 - name: Adding reservation file
   copy:
@@ -106,27 +123,27 @@
     dest: reservation.yaml
   when:
     - inventory_hostname == openvpn_node
-    - not addition
+    - not action_type
 
 
 - name: Executing enos
   shell: ". venv/bin/activate; enos deploy > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
-    - not addition
+    - not action_type
 
 - stat:
     path: current/multinode
   register: multinode
   when:
-      - inventory_hostname == openvpn_node
-      - not addition
+    - inventory_hostname == openvpn_node
+    - not action_type
 
 - debug:
     msg: "Found multinode file"
   when:
     - inventory_hostname == openvpn_node
-    - not addition
+    - not action_type
     - multinode.stat.exists
 
 
@@ -137,11 +154,10 @@
     flat: yes
   when:
     - inventory_hostname == openvpn_node
-    - not addition
+    - not action_type
     - multinode.stat.exists
 
-
-    # ADDITION
+    # ACTION
 
 - name: Adding reservation file
   copy:
@@ -149,7 +165,7 @@
     dest: reservation.yaml
   when:
     - inventory_hostname == openvpn_node
-    - addition
+    - action_type
 
 
 - name: Copy multinode file
@@ -158,18 +174,36 @@
     dest: "{{ enos_dir}}/enos/enos/inventories/multinode"
   when:
     - inventory_hostname == openvpn_node
-    - addition
+    - action_type
 
 
-- name: Executing enos up
+    # ADDITION
+
+- name: Executing enos up limited
   shell: ". venv/bin/activate; enos up --limit > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
-    - addition
+    - action_type == 'add'
 
 
-- name: Executing enos
-  shell: ". venv/bin/activate; enos kolla -- deploy --limit {{ addition }} > /tmp/enos.logs"
+- name: Executing kolla deploy limited
+  shell: ". venv/bin/activate; enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
-    - addition
+    - action_type == 'add'
+
+    # STOP
+
+- name: Executing kolla stop limited
+  shell: ". venv/bin/activate; enos kolla -- stop --limit {{ alias }} > /tmp/enos.logs"
+  when:
+    - inventory_hostname == openvpn_node
+    - action_type == 'remove'
+
+    # REJOIN
+
+- name: Executing kolla deploy limited
+  shell: ". venv/bin/activate; enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
+  when:
+    - inventory_hostname == openvpn_node
+    - action_type == 'rejoin'
