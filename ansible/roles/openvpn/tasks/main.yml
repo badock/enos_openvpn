@@ -4,7 +4,6 @@
   apt:
     name: "{{ item }}"
     state: present
-    update_cache: yes
   with_items:
     - openvpn
     - screen
@@ -30,7 +29,7 @@
 - name: Preparing master node when not adding node
   include: not_addition.yml
   when:
-    - not addition
+    - not node
     - inventory_hostname == openvpn_node
 
 
@@ -44,7 +43,7 @@
   include: others.yml
   when:
     - inventory_hostname in other_nodes
-    # - not addition
+    # - not node
 
 
 - name: Creating docker0 interface fix file
@@ -52,7 +51,9 @@
     src: create_docker0.sh.j2
     dest: /root/create_docker0.sh
     mode: "u=rwx,g=r,o=r"
+  when: (inventory_hostname == openvpn_node and not node) or inventory_hostname in other_nodes
 
 
 - name: Executing docker0 interface fix file
   shell: "bash /root/create_docker0.sh"
+  when: (inventory_hostname == openvpn_node and not node) or inventory_hostname in other_nodes

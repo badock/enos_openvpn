@@ -119,6 +119,7 @@ Options:
     --add NODE         Add defined node
     """
     hosts_file = 'current/hosts'
+    extra_vars = {'action_type': None}
     if not (os.path.exists(hosts_file) and
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
@@ -131,12 +132,13 @@ Options:
                 else:
                     logging.info("Adding %s to host file" % add)
                     f.write('\n%s' % add)
+            extra_vars.update({'action_type': 'add'})
         hosts = [host.strip() for host in open("current/hosts", 'r')]
         logging.info("Running ansible")
         exec_dir = os.path.dirname(os.path.realpath(__file__))
-        extra_vars = { 'exec_dir': exec_dir ,
-                       'nodes': hosts,
-                       'addition': add }
+        extra_vars.update({ 'exec_dir': exec_dir,
+                            'nodes': hosts,
+                            'node': add})
         launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
         run_ansible([launch_playbook], 'current/hosts',
                     extra_vars=extra_vars)
@@ -147,39 +149,46 @@ Options:
 # pip target is bugged, so for now, enos dir will be in /tmp/src
 # https://github.com/pypa/pip/issues/4390
 @doc()
-def enos(g5k, enos_dir, add=None, **kwargs):
+def enos(g5k, enos_dir, action=None, node=None, **kwargs):
     """
 Usage: eov enos [options]
 
 Deploy enos on hosts
 
 Options:
-    --g5k              Deploying on g5k [default: false]
-    --add NODE         Add defined node
-    --enos_dir DIR     Define enos install directory [default: /tmp/src]
+    --g5k               Deploying on g5k [default: false]
+    --node NODE         The node to act on
+    --enos_dir DIR      Define enos install directory [default: /tmp/src]
+    -a, --action ACTION Define the action to do
 
     """
     hosts_file = 'current/hosts'
     extra_vars = { 'g5k': g5k,
-                   'enos_dir': enos_dir}
+                   'enos_dir': enos_dir,
+                   'node': None,
+                   'alias': None}
     if not (os.path.exists(hosts_file) and
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
-        if add:
-            with open(hosts_file) as f:
-                if not (add in line for line in f):
+        if action and node:
+            with open(hosts_file, "r+") as f:
+                for line in f:
+                    if node in line:
+                        break
+                else:
                     logging.warning("Adding %s to host file, "\
-                                    "did you ran openvpn?" % add)
-                    f.write('\n%s' % add)
-            alias, address = _add_node_in_reservation(add)
+                                    "did you ran openvpn?" % node)
+                    f.write('\n%s' % node)
+            alias, address = _add_node_in_reservation(node)
             _add_node_in_multinode(alias, address)
-            add = alias
+            extra_vars.update({'node': node,
+                               'alias': alias})
         hosts = [host.strip() for host in open(hosts_file, 'r')]
         logging.info("Running ansible")
         exec_dir = os.path.dirname(os.path.realpath(__file__))
         extra_vars.update({'exec_dir': exec_dir,
                            'nodes': hosts,
-                           'addition': add})
+                           'action_type': action if not action else str(action)})
         launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
         run_ansible([launch_playbook], 'current/hosts',
                     extra_vars=extra_vars)
@@ -274,18 +283,21 @@ def ssh_public_key():
     return lines[0]
 
 
-@app.route('/addnode/<g5k>/<add>')
-def add_node(g5k, add):
-    if g5k.lower() == "true" or g5k.lower() == "g5k":
-        g5k = True
-    else:
-        g5k = False
+@app.route('/openvpn/<add>')
+def openvpn_add(add):
     openvpn(add)
     files = '%s.tar.gz' % add
     return send_from_directory('current', files)
 
-    # enos(g5k=g5k, enos_dir='/tmp/src', add=add)
-    # return 'You have been added to Openstack\n'
+
+@app.route('/enos/<action>/<g5k>/<name>')
+def enos_action(action, g5k, name):
+    if g5k.lower() == "true" or g5k.lower() == "g5k":
+        g5k = True
+    else:
+        g5k = False
+    enos(g5k=g5k, enos_dir='/tmp/src', action=action, node=name)
+    return "Action %s has been executed for %s\n" % (action, name)
 
 
 @doc()

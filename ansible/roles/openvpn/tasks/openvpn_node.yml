@@ -71,4 +71,4 @@
     - server.conf
     - server2.conf
   when:
-    - not addition
+    - not node
