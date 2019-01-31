@@ -171,6 +171,9 @@ Options:
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
         if action and node:
+            if action not in ['add', 'remove', 'rejoin']:
+                logging.error("The action must be 'add', 'remove' or 'rejoin'")
+                raise
             with open(hosts_file, "r+") as f:
                 for line in f:
                     if node in line:

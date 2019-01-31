@@ -124,13 +124,17 @@ Join the existing Openstack. <master> is the ip of the master node
 Options:
     -n, --name NAME      Name of the node to act on [default: new_node]
     --g5k                Specify if the node is on g5k [default: False]
-    -a, --action ACTION  Action to run
+    -a, --action ACTION  Action to run (add, remove or rejoin)
     """
+    if action not in ['add', 'remove', 'rejoin']:
+        raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
     # Request to be added
     try:
         url = "http://%s/enos/%s/%s/%s" % (master, action, g5k, name)
         logging.info("Executing %s" % action)
         result = requests.get(url)
+        if result.status_code == requests.codes.ok:
+            logging.info("%s has correctly been executed" % action.capitalize())
     except Exception as error:
         logging.error("Encountered an error while adding the node")
         logging.error(error)
