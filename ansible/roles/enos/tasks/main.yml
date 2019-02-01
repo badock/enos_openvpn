@@ -50,14 +50,6 @@
   when: g5k
 
 
-- name: Getting virtualenv
-  pip:
-    name: virtualenv
-  when:
-    - inventory_hostname == openvpn_node
-    - not action_type
-
-
 - name: Getting enos
   pip:
     name: git+https://github.com/marie-donnie/enos.git@limit#egg=enos
@@ -108,15 +100,6 @@
     - not action_type
 
 
-- name: Piping
-  shell: "virtualenv venv"
-  args:
-    creates: "venv/bin/activate"
-  when:
-    - inventory_hostname == openvpn_node
-    - not action_type
-
-
 - name: Adding reservation file
   copy:
     src: "{{ exec_dir }}/reservation.yaml"
@@ -127,7 +110,7 @@
 
 
 - name: Executing enos
-  shell: ". venv/bin/activate; enos deploy > /tmp/enos.logs"
+  shell: "enos deploy > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
     - not action_type
@@ -180,14 +163,14 @@
     # ADDITION
 
 - name: Executing enos up limited
-  shell: ". venv/bin/activate; enos up --limit > /tmp/enos.logs"
+  shell: "enos up --limit > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
     - action_type == 'add'
 
 
 - name: Executing kolla deploy limited
-  shell: ". venv/bin/activate; enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
+  shell: "enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
     - action_type == 'add'
@@ -195,7 +178,7 @@
     # STOP
 
 - name: Executing kolla stop limited
-  shell: ". venv/bin/activate; enos kolla -- stop --limit {{ alias }} > /tmp/enos.logs"
+  shell: "enos kolla -- stop --limit {{ alias }} > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
     - action_type == 'remove'
@@ -203,7 +186,7 @@
     # REJOIN
 
 - name: Executing kolla deploy limited
-  shell: ". venv/bin/activate; enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
+  shell: "enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
   when:
     - inventory_hostname == openvpn_node
     - action_type == 'rejoin'
