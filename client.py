@@ -86,7 +86,7 @@ def enos(master, name, action, g5k=False, **kwargs):
     """
 Usage: client enos MASTER [options]
 
-Join the existing Openstack. <master> is the ip of the master node
+Join the existing Openstack. MASTER is the ip of the master node
 
 Options:
     -n, --name NAME      Name of the node to act on [default: new_node]
@@ -102,6 +102,8 @@ Options:
         result = requests.get(url)
         if result.status_code == requests.codes.ok:
             logging.info("%s has correctly been executed" % action.capitalize())
+        else:
+            logging.error("Encountered an error while adding the node:\n%s" % result)
     except Exception as error:
         logging.error("Encountered an error while adding the node")
         logging.error(error)

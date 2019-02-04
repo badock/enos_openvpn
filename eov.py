@@ -118,32 +118,19 @@ Deploy openvpn on resources from current/hosts
 Options:
     --add NODE         Add defined node
     """
-    hosts_file = 'current/hosts'
     extra_vars = {'action_type': None}
-    if not (os.path.exists(hosts_file) and
-    os.path.isfile(hosts_file) and
-    os.stat(hosts_file).st_size == 0):
-        if add:
-            logging.info("You requested to add %s to openvpn" % add)
-            with open(hosts_file, "r+") as f:
-                for line in f:
-                    if add in line:
-                        break
-                else:
-                    logging.info("Adding %s to host file" % add)
-                    f.write('\n%s' % add)
-            extra_vars.update({'action_type': 'add'})
-        hosts = [host.strip() for host in open("current/hosts", 'r')]
-        logging.info("Running ansible")
-        exec_dir = os.path.dirname(os.path.realpath(__file__))
-        extra_vars.update({ 'exec_dir': exec_dir,
-                            'nodes': hosts,
-                            'node': add})
-        launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
-        run_ansible([launch_playbook], 'current/hosts',
-                    extra_vars=extra_vars)
-    else:
-        logging.error("No host to run onto.")
+    if add:
+        _add_node_to_hosts(add)
+        extra_vars.update({'action_type': 'add'})
+    hosts = [host.strip() for host in open("current/hosts", 'r')]
+    logging.info("Running ansible")
+    exec_dir = os.path.dirname(os.path.realpath(__file__))
+    extra_vars.update({ 'exec_dir': exec_dir,
+                        'nodes': hosts,
+                        'node': add})
+    launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
+    run_ansible([launch_playbook], 'current/hosts',
+                extra_vars=extra_vars)
 
 
 # pip target is bugged, so for now, enos dir will be in /tmp/src
@@ -167,35 +154,43 @@ Options:
                    'enos_dir': enos_dir,
                    'node': None,
                    'alias': None}
+    if action and node:
+        if action not in ['add', 'remove', 'rejoin']:
+            raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
+        if action == 'add':
+            _add_node_to_hosts(node)
+        alias, address = _add_node_in_reservation(node)
+        _add_node_in_multinode(alias, address)
+        extra_vars.update({'node': node,
+                           'alias': alias})
+    elif action:
+        raise ValueError("No node to run %s onto" % action)
+    hosts = [host.strip() for host in open(hosts_file, 'r')]
+    logging.info("Running ansible")
+    exec_dir = os.path.dirname(os.path.realpath(__file__))
+    extra_vars.update({'exec_dir': exec_dir,
+                       'nodes': hosts,
+                       'action_type': action if not action else str(action)})
+    launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
+    run_ansible([launch_playbook], 'current/hosts',
+                extra_vars=extra_vars)
+
+
+def _add_node_to_hosts(add):
+    hosts_file = 'current/hosts'
     if not (os.path.exists(hosts_file) and
     os.path.isfile(hosts_file) and
     os.stat(hosts_file).st_size == 0):
-        if action and node:
-            if action not in ['add', 'remove', 'rejoin']:
-                raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
-            with open(hosts_file, "r+") as f:
-                for line in f:
-                    if node in line:
-                        break
-                else:
-                    logging.warning("Adding %s to host file, "\
-                                    "did you ran openvpn?" % node)
-                    f.write('\n%s' % node)
-            alias, address = _add_node_in_reservation(node)
-            _add_node_in_multinode(alias, address)
-            extra_vars.update({'node': node,
-                               'alias': alias})
-        hosts = [host.strip() for host in open(hosts_file, 'r')]
-        logging.info("Running ansible")
-        exec_dir = os.path.dirname(os.path.realpath(__file__))
-        extra_vars.update({'exec_dir': exec_dir,
-                           'nodes': hosts,
-                           'action_type': action if not action else str(action)})
-        launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
-        run_ansible([launch_playbook], 'current/hosts',
-                    extra_vars=extra_vars)
+        logging.info("You have requested to add %s" % add)
+        with open(hosts_file, "r+") as f:
+            for line in f:
+                if add in line:
+                    break
+            else:
+                logging.info("Adding %s to host file" % add)
+                f.write('\n%s' % add)
     else:
-        logging.error("No host to run onto.")
+        raise OSError("No host file or the host file is empty.")
 
 
 def _add_node_in_reservation(add):
