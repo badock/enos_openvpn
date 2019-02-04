@@ -288,8 +288,7 @@ def ssh_public_key():
 @app.route('/openvpn/<add>')
 def openvpn_add(add):
     openvpn(add)
-    files = '%s.tar.gz' % add
-    return send_from_directory('current', files)
+    return "You have been added to openvpn.\n"
 
 
 @app.route('/enos/<action>/<g5k>/<name>')

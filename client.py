@@ -62,7 +62,7 @@ def openvpn(master, name, **kwargs):
     """
 Usage: client openvpn MASTER [options]
 
-Connect to the openvpn network. <master> is the ip of the master node
+Connect to the openvpn network. MASTER is the ip of the master node
 
 Options:
     -n, --name NAME     Name of the node to add [default: new_node]
@@ -72,45 +72,12 @@ Options:
         url = "http://%s/openvpn/%s" % (master, name)
         logging.info("Getting the required files and installing dependencies")
         result = requests.get(url)
+        if result.status_code == requests.codes.ok:
+            logging.info("You have correctly been added to openvpn")
     except OSError as error:
         logging.error(error)
-        logging.error("Encountered an error while getting file")
+        logging.error("Encountered an error while joining openvpn")
         raise
-    # Put the content into a tar
-    files = '%s.tar.gz' % name
-    open(files, 'wb').write(result.content)
-    # Untaring files
-    try:
-        tar = tarfile.open(files)
-        tar.extractall()
-        tar.close()
-    except OSError as error:
-        logging.error(error)
-        logging.error("The files could not be extracted")
-        raise
-    # Put openvpn shared key at the proper place, i.e.
-    # /etc/openvpn/openvpn-shared-key.key
-    shutil.move("%s/openvpn-shared-key.key" % name,
-                "/etc/openvpn/openvpn-shared-key.key")
-    # Put delete route file at the proper place, i.e.
-    # from ansible/roles/openvpn/files/delete_route.sh to
-    # /root/delete_route.sh, mode: "u=rwx,g=r,o=r"
-    shutil.copyfile("ansible/roles/openvpn/files/delete_route.sh",
-                    "/root/delete_route.sh")
-    os.chmod("/root/delete_route.sh", 0o744)
-    # Using client.conf
-    # cd root/{{ inventory_hostname }}/ ; openvpn --daemon --config client.conf
-    os.system("openvpn --daemon --config /root/%s/client.conf" % name)
-    # sleep 4
-    time.sleep(4)
-    # Using client1.conf
-    # cd root/{{ inventory_hostname }}/ ; openvpn --daemon --config client1.conf
-    os.system("openvpn --daemon --config /root/%s/client1.conf" % name)
-    # Using docker0 interface fix file
-    shutil.copyfile("ansible/roles/openvpn/templates/create_docker0.sh.j2",
-                    "/root/create_docker0.sh")
-    os.chmod("/root/create_docker0.sh", 0o744)
-    subprocess.call(['/root/create_docker0.sh'])
 
 
 @doc()
