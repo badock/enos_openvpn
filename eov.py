@@ -27,6 +27,7 @@ import sys
 import logging
 import yaml
 import time
+import copy
 
 from docopt import docopt
 from flask import Flask, send_from_directory
@@ -34,6 +35,7 @@ import execo
 import execo_g5k as ex5
 import execo_g5k.api_utils as api
 from enoslib.api import run_ansible
+import jinja2
 
 from utils import (EOV_PATH, ANSIBLE_PATH, SYMLINK_NAME, doc,
 doc_lookup)
@@ -93,9 +95,8 @@ Options:
         ex5.wait_oargrid_job_start(job)
     nodes = ex5.get_oargrid_job_nodes(job)
     hosts_file = 'current/hosts'
-    if not (os.path.exists(hosts_file) and
-    os.path.isfile(hosts_file) and
-    os.stat(hosts_file).st_size == 0):
+    if not((_check_file_exists(hosts_file) and
+    os.stat(hosts_file).st_size != 0)):
         logging.info("Deploying debian on nodes %s" % nodes)
         deployment = ex5.kadeploy.Deployment(hosts=nodes,
                                              env_name='debian9-x64-nfs')
@@ -176,11 +177,111 @@ Options:
                 extra_vars=extra_vars)
 
 
+@doc()
+def kolla(**kwargs):
+    """
+Usage: eov kolla [options]
+
+Deploy enos on hosts
+
+
+    """
+    hosts_file = 'current/hosts'
+    if _check_file_exists(hosts_file):
+        hosts = [host.strip() for host in open(hosts_file, 'r')]
+        print(hosts)
+    config = _config("1.1", "1.1", "24", hosts)
+    multinode = _multinode(config)
+
+
+
+def _check_file_exists(fil):
+    return os.path.exists(fil) and os.path.isfile(fil)
+
+
+def _config(network1, network2, mask, hosts, config_path='configuration.yml'):
+    variables = {'network1': network1,
+                 'network2': network2,
+                 'mask': mask,
+                 'hosts': hosts}
+    if (_check_file_exists(config_path)):
+        with open(config_path, "r") as f:
+            configuration = yaml.load(f)
+    else:
+        raise OSError("No configuration file at %s." % config_path)
+    control_number = range(configuration['nodes']['control'])
+    network_number = range(configuration['nodes']['network'])
+    compute_number = range(configuration['nodes']['compute'])
+    if 'all-in-one' in configuration:
+        node_index = _all_in_one(configuration,
+                                 control_number,
+                                 network_number,
+                                 compute_number)
+    variables.update({'node_index' : node_index,
+                      'controls' : control_number,
+                      'networks' : network_number,
+                      'computes' : compute_number})
+    jinja_conf = "post_conf.yaml.j2"
+    env = jinja2.Environment(
+        loader=jinja2.PackageLoader('eov')
+    )
+    template = env.get_template(jinja_conf)
+    render = (template.render(variables))
+    yaml_conf = yaml.load(render)
+    print(yaml_conf)
+    return yaml_conf
+
+
+
+def _all_in_one(conf, control_number, network_number, compute_number):
+    node_number = {'control': [], 'network': [], 'compute': []}
+    n_cont = conf['all-in-one']['control']
+    n_net = conf['all-in-one']['network']
+    n_comp = conf['all-in-one']['compute']
+
+    for cont in control_number:
+        node_number['control'].append(n_cont + cont)
+    for net in network_number:
+        node_number['network'].append(n_net + net)
+    for comp in compute_number:
+        node_number['compute'].append(n_comp + comp)
+    print node_number
+    return node_number
+
+
+def _multinode(conf):
+    print(conf)
+    private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
+    conf_copy = copy.deepcopy(conf)
+    for typ in conf_copy['resources']:
+        for node in conf_copy['resources'][typ]:
+            ssh = ('ssh' if node['host'] != 'localhost' else 'local')
+            node.update({'parameters':
+                ("ansible_ssh_user=root " \
+                 "ansible_connection={} " \
+                 "ansible_ssh_private_key={} " \
+                 "ansible_ssh_common_args='-o StrictHostChecking=no " \
+                 "-o UserKnownHostFiles=/dev/null' " \
+                 "neutron_external_interface=tap1 " \
+                 "network_interface=tap0 ").format(ssh,
+                                                   private_key_path)})
+    variables = {'control': conf_copy['resources']['control'],
+                 'network': conf_copy['resources']['network'],
+                 'compute': conf_copy['resources']['compute'],
+    }
+    env = jinja2.Environment(
+        loader=jinja2.PackageLoader('eov')
+    )
+    template = env.get_template('multinode_top.j2')
+    multinode_conf = (template.render(variables))
+    print multinode_conf
+
+
+
 def _add_node_to_hosts(add):
     hosts_file = 'current/hosts'
-    if not (os.path.exists(hosts_file) and
-    os.path.isfile(hosts_file) and
-    os.stat(hosts_file).st_size == 0):
+    if (_check_file_exists(hosts_file) and
+    os.stat(hosts_file).st_size != 0):
         logging.info("You have requested to add %s" % add)
         with open(hosts_file, "r+") as f:
             for line in f:
@@ -195,8 +296,7 @@ def _add_node_to_hosts(add):
 
 def _add_node_in_reservation(add):
     current_nodes = 'current/reservation.yaml'
-    if not (os.path.exists(current_nodes) and
-    os.path.isfile(current_nodes)):
+    if not _check_file_exists(current_node):
         shutil.copy2('reservation.yaml',
                      'current/reservation.yaml')
     node_present = False

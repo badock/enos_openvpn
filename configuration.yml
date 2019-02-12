@@ -1,0 +1,16 @@
+# how many nodes for each roles
+nodes:
+  control: 1
+  network: 1
+  compute: 2
+
+# which node to put the role onto
+# begins at 0 (localhost)
+# take the number of roles into account, e.g.
+# if control has 3 nodes and begins at 2,
+# network has to begin at 5 minimum
+all-in-one:
+  deploy: 1
+  control: 2
+  network: 3
+  compute: 4

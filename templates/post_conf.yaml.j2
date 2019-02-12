@@ -1,0 +1,40 @@
+
+networks:
+  - cidr: {{ network1 }}.0.0/{{ mask }}
+    start: {{ network1 }}.0.254
+    end: {{ network1 }}.255.254
+    gateway: {{ network1 }}.0.1
+    dns: 8.8.8.8
+    roles: ['network_interface']
+  - cidr: {{ network2 }}.0.0/{{ mask }}
+    start: {{ network2 }}.0.254
+    end: {{ network2 }}.255.254
+    gateway: {{ network2 }}.0.1
+    dns: 8.8.8.8
+    roles: ['neutron_external_interface']
+
+resources:
+  control:
+    {%- for control in controls %}
+    - address: {{ network1 }}.0.{{ node_index['control'][loop.index0] }}
+      alias: control_node{{ loop.index }}
+      user: root
+      name: control_node{{ loop.index }}
+      host: {{ hosts[node_index['control'][loop.index0]-1] if node_index['control'][loop.index0] !=0 else 'localhost' }}
+    {%- endfor %}
+  network:
+    {%- for network in networks %}
+    - address: {{ network1 }}.0.{{ node_index['network'][loop.index0] }}
+      alias: network_node{{ loop.index }}
+      user: root
+      name: network_node{{ loop.index }}
+      host: {{ hosts[node_index['network'][loop.index0]-1] if node_index['network'][loop.index0] !=0 else 'localhost' }}
+    {%- endfor %}
+  compute:
+    {%- for compute in computes %}
+    - address: {{ network1 }}.0.{{ node_index['compute'][loop.index0] }}
+      alias: compute_node{{ loop.index }}
+      user: root
+      name: compute_node{{ loop.index }}
+      host: {{ hosts[node_index['compute'][loop.index0]-1] if node_index['compute'][loop.index0] !=0 else 'localhost' }}
+    {%- endfor %}
