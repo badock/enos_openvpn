@@ -8,7 +8,7 @@ from functools import wraps
 # Defining global variables
 EOV_PATH = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 ANSIBLE_PATH = os.path.join(EOV_PATH, 'ansible')
-SYMLINK_NAME = os.path.abspath(os.path.join(os.getcwd(), 'current'))
+CURRENT_PATH = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'current'))
 
 DOC_GLOBAL = {}
 

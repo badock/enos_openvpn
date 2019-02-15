@@ -37,7 +37,7 @@ import execo_g5k.api_utils as api
 from enoslib.api import run_ansible
 import jinja2
 
-from utils import (EOV_PATH, ANSIBLE_PATH, SYMLINK_NAME, doc,
+from utils import (EOV_PATH, ANSIBLE_PATH, CURRENT_PATH, doc,
 doc_lookup)
 
 
@@ -94,7 +94,7 @@ Options:
         logging.info("Waiting for oargridjob %s to start" % job)
         ex5.wait_oargrid_job_start(job)
     nodes = ex5.get_oargrid_job_nodes(job)
-    hosts_file = 'current/hosts'
+    hosts_file = '%s/hosts' % CURRENT_PATH
     if not((_check_file_exists(hosts_file) and
     os.stat(hosts_file).st_size != 0)):
         logging.info("Deploying debian on nodes %s" % nodes)
@@ -107,6 +107,9 @@ Options:
         with open(hosts_file, 'w') as f:
             for host in deployed:
                 f.write("%s\n" % host)
+    private_key_path = '%s/ansible' % CURRENT_PATH
+    if not _check_file_exists(private_key_path):
+        os.system('ssh-keygen -t rsa -N "" -b 4096 -f %s' % private_key_path)
 
 
 @doc()
@@ -119,25 +122,26 @@ Deploy openvpn on resources from current/hosts
 Options:
     --add NODE         Add defined node
     """
+    _create_ansible_conf()
     extra_vars = {'action_type': None}
     if add:
         _add_node_to_hosts(add)
         extra_vars.update({'action_type': 'add'})
-    hosts = [host.strip() for host in open("current/hosts", 'r')]
-    logging.info("Running ansible")
+    hosts = [host.strip() for host in open("%s/hosts" % CURRENT_PATH, 'r')]
+    logging.info("Running ansible openvpn")
     exec_dir = os.path.dirname(os.path.realpath(__file__))
     extra_vars.update({ 'exec_dir': exec_dir,
                         'nodes': hosts,
                         'node': add})
     launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
-    run_ansible([launch_playbook], 'current/hosts',
+    run_ansible([launch_playbook], '%s/hosts' % CURRENT_PATH,
                 extra_vars=extra_vars)
 
 
 # pip target is bugged, so for now, enos dir will be in /tmp/src
 # https://github.com/pypa/pip/issues/4390
-@doc()
-def enos(g5k, enos_dir, action=None, node=None, **kwargs):
+@doc(EOV_PATH)
+def enos(g5k, enos_dir, conf, action=None, node=None, **kwargs):
     """
 Usage: eov enos [options]
 
@@ -148,13 +152,16 @@ Options:
     --node NODE         The node to act on
     --enos_dir DIR      Define enos install directory [default: /tmp/src]
     -a, --action ACTION Define the action to do
+    -c, --conf CONF     Which configuration file to use [default: {}/configuration.yml]
 
     """
-    hosts_file = 'current/hosts'
+    _create_ansible_conf()
+    hosts_file = '%s/hosts' % CURRENT_PATH
     extra_vars = { 'g5k': g5k,
                    'enos_dir': enos_dir,
                    'node': None,
-                   'alias': None}
+                   'alias': None,
+                   'current_dir': CURRENT_PATH}
     if action and node:
         if action not in ['add', 'remove', 'rejoin']:
             raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
@@ -168,12 +175,13 @@ Options:
         raise ValueError("No node to run %s onto" % action)
     hosts = [host.strip() for host in open(hosts_file, 'r')]
     logging.info("Running ansible")
-    exec_dir = os.path.dirname(os.path.realpath(__file__))
-    extra_vars.update({'exec_dir': exec_dir,
+    kolla()
+    extra_vars.update({'exec_dir': EOV_PATH,
                        'nodes': hosts,
                        'action_type': action if not action else str(action)})
+    extra_vars.update(_kolla_config(conf))
     launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
-    run_ansible([launch_playbook], 'current/hosts',
+    run_ansible([launch_playbook], '%s/hosts' % CURRENT_PATH,
                 extra_vars=extra_vars)
 
 
@@ -182,36 +190,79 @@ def kolla(**kwargs):
     """
 Usage: eov kolla [options]
 
-Deploy enos on hosts
-
-
+Deploy openstack using kolla.
     """
-    hosts_file = 'current/hosts'
+    hosts_file = '%s/hosts' % CURRENT_PATH
     if _check_file_exists(hosts_file):
         hosts = [host.strip() for host in open(hosts_file, 'r')]
-        print(hosts)
-    config = _config("1.1", "1.1", "24", hosts)
-    multinode = _multinode(config)
-
+    config = _config(hosts)
+    multinode = _multinode(config, 'kolla_ssh')
+    with open('%s/multinode' % CURRENT_PATH, 'w') as multinode_file, \
+         open ('multinode.part', 'r') as multinode_part:
+         multinode_file.write(multinode)
+         for line in multinode_part:
+             multinode_file.write(line)
 
 
 def _check_file_exists(fil):
     return os.path.exists(fil) and os.path.isfile(fil)
 
 
-def _config(network1, network2, mask, hosts, config_path='configuration.yml'):
-    variables = {'network1': network1,
-                 'network2': network2,
-                 'mask': mask,
-                 'hosts': hosts}
+def _create_ansible_conf():
+    if not _check_file_exists('%s/ansible.cfg' % EOV_PATH):
+        config = _read_configuration()
+        private_key_path = os.path.expanduser(config['ssh_key'])
+        if not _check_file_exists(private_key_path):
+            logging.info("%s does not exist, using ~/.ssh/id_rsa instead" %
+                         private_key_path)
+            private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
+        variables = {'private_key': private_key_path}
+        jinja_conf = "ansible.cfg.j2"
+        env = jinja2.Environment(loader=jinja2.PackageLoader('eov'))
+        template = env.get_template(jinja_conf)
+        render = (template.render(variables))
+        with open('%s/ansible.cfg' % EOV_PATH, "w") as f:
+            f.write(render)
+    else:
+        logging.info("Using already existing ansible.cfg")
+
+
+# def _add_private_key_to_hosts(hosts_file):
+#     private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
+#     if _check_file_exists(hosts_file):
+#         hosts = [host.strip() for host in open(hosts_file, 'r')]
+#         for host in hosts:
+#             host += " ansible_ssh_private_key=%s" % private_key_path
+
+
+def _read_configuration(config_path='%s/configuration.yml' % EOV_PATH):
     if (_check_file_exists(config_path)):
         with open(config_path, "r") as f:
             configuration = yaml.load(f)
+        return configuration
     else:
         raise OSError("No configuration file at %s." % config_path)
+
+
+def _kolla_config(conf):
+    user_conf = _read_configuration(conf)
+    conf = {'network_interface': user_conf['kolla']['network_interface'],
+            'neutron_external_interface': user_conf['kolla']['neutron_external_interface'],
+            'kolla_internal_ip': user_conf['kolla']['kolla_internal_ip'],
+            'os_version': user_conf['kolla']['os_version'],
+            'images': user_conf['images']}
+    return conf
+
+
+def _config(hosts):
+    variables = {'hosts': hosts}
+    configuration = _read_configuration()
     control_number = range(configuration['nodes']['control'])
     network_number = range(configuration['nodes']['network'])
     compute_number = range(configuration['nodes']['compute'])
+    network1 = configuration['network']['network1']
+    network2 = configuration['network']['network2']
+    mask = configuration['network']['mask']
     if 'all-in-one' in configuration:
         node_index = _all_in_one(configuration,
                                  control_number,
@@ -220,7 +271,10 @@ def _config(network1, network2, mask, hosts, config_path='configuration.yml'):
     variables.update({'node_index' : node_index,
                       'controls' : control_number,
                       'networks' : network_number,
-                      'computes' : compute_number})
+                      'computes' : compute_number,
+                      'network1': network1,
+                      'network2': network2,
+                      'mask': mask })
     jinja_conf = "post_conf.yaml.j2"
     env = jinja2.Environment(
         loader=jinja2.PackageLoader('eov')
@@ -228,7 +282,6 @@ def _config(network1, network2, mask, hosts, config_path='configuration.yml'):
     template = env.get_template(jinja_conf)
     render = (template.render(variables))
     yaml_conf = yaml.load(render)
-    print(yaml_conf)
     return yaml_conf
 
 
@@ -245,41 +298,41 @@ def _all_in_one(conf, control_number, network_number, compute_number):
         node_number['network'].append(n_net + net)
     for comp in compute_number:
         node_number['compute'].append(n_comp + comp)
-    print node_number
     return node_number
 
 
-def _multinode(conf):
-    print(conf)
-    private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
+def _multinode(conf, ssh_path=None):
+    if not ssh_path:
+        private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
+    else:
+        private_key_path = ssh_path
     conf_copy = copy.deepcopy(conf)
     for typ in conf_copy['resources']:
         for node in conf_copy['resources'][typ]:
             ssh = ('ssh' if node['host'] != 'localhost' else 'local')
             node.update({'parameters':
-                ("ansible_ssh_user=root " \
-                 "ansible_connection={} " \
-                 "ansible_ssh_private_key={} " \
-                 "ansible_ssh_common_args='-o StrictHostChecking=no " \
-                 "-o UserKnownHostFiles=/dev/null' " \
-                 "neutron_external_interface=tap1 " \
-                 "network_interface=tap0 ").format(ssh,
-                                                   private_key_path)})
+                         ("ansible_ssh_user=root "
+                          "ansible_connection={} "
+                          "ansible_ssh_private_key={} "
+                          "ansible_ssh_common_args="
+                          "'-o StrictHostKeyChecking=no "
+                          "-o UserKnownHostsFile=/dev/null' "
+                          "neutron_external_interface=tap1 "
+                          "network_interface=tap0 ").format(ssh,
+                                                            private_key_path)})
     variables = {'control': conf_copy['resources']['control'],
                  'network': conf_copy['resources']['network'],
-                 'compute': conf_copy['resources']['compute'],
-    }
+                 'compute': conf_copy['resources']['compute'] }
     env = jinja2.Environment(
         loader=jinja2.PackageLoader('eov')
     )
     template = env.get_template('multinode_top.j2')
     multinode_conf = (template.render(variables))
-    print multinode_conf
-
+    return multinode_conf
 
 
 def _add_node_to_hosts(add):
-    hosts_file = 'current/hosts'
+    hosts_file = '%s/hosts' % CURRENT_PATH
     if (_check_file_exists(hosts_file) and
     os.stat(hosts_file).st_size != 0):
         logging.info("You have requested to add %s" % add)
@@ -295,10 +348,10 @@ def _add_node_to_hosts(add):
 
 
 def _add_node_in_reservation(add):
-    current_nodes = 'current/reservation.yaml'
+    current_nodes = '%s/reservation.yaml' % CURRENT_PATH
     if not _check_file_exists(current_node):
         shutil.copy2('reservation.yaml',
-                     'current/reservation.yaml')
+                     current_nodes)
     node_present = False
     with open(current_nodes, "r") as f:
         for line in f:
@@ -332,7 +385,7 @@ def _add_node_in_reservation(add):
 
 
 def _add_node_in_multinode(alias, address):
-    multinode_file = 'current/multinode'
+    multinode_file = '%s/multinode' % CURRENT_PATH
     # putting every line in a list
     try:
         with open(multinode_file) as f:
@@ -364,11 +417,13 @@ Usage: eov cleanup
 
 Remove temporary files in the 'current' directory
     """
-    current = "current"
-    for root, dirs, files in os.walk(current):
+    for root, dirs, files in os.walk(CURRENT_PATH):
         for fil in files:
             if fil != ".gitignore":
                 os.remove(os.path.join(root, fil))
+    ansible_cfg = '%s/ansible.cfg' % EOV_PATH
+    if _check_file_exists(ansible_cfg):
+        os.remove(ansible_cfg)
     logging.info("Cleaned up current directory")
 
 

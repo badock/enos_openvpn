@@ -14,3 +14,22 @@ all-in-one:
   control: 2
   network: 3
   compute: 4
+
+ssh_key: ~/enos_openvpn/current/ansible
+
+network:
+  network1: 11.8
+  network2: 11.8
+  mask: 24
+
+kolla:
+  kolla_internal_ip: 11.8.0.254
+  network_interface: tap0
+  neutron_external_interface: tap1
+  os_version: rocky
+
+images:
+  - name: debian-9
+    url: https://cdimage.debian.org/cdimage/openstack/current-9/debian-9-openstack-amd64.qcow2
+  - name: cirros.uec
+    url: http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img

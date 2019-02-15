@@ -5,7 +5,7 @@ callback_whitelist = profile_tasks
 fact_caching = jsonfile
 fact_caching_connection = ./current/_tmp/
 ansible_user = root
-private_key_file = /home/madelavergne/enos_openvpn/current/ansible
+private_key_file = {{ private_key }}
 
 [ssh_connection]
 pipelining=True

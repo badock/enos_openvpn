@@ -1,3 +1,46 @@
 openvpn_node: "{{ groups['all'][0] }}"
 
 other_nodes: "{{ groups['all'][1:] if (not action_type) else [node] }}"
+
+openstack_release: queens
+
+# FROM ENOS
+# default openstack env
+os_env:
+  OS_PROJECT_DOMAIN_ID: default
+  OS_PROJECT_DOMAIN_NAME: default
+  OS_USER_DOMAIN_ID: default
+  OS_USER_DOMAIN_NAME: default
+  OS_PROJECT_NAME: admin
+  OS_TENANT_NAME: admin
+  OS_USERNAME: admin
+  OS_PASSWORD: demo
+  OS_AUTH_URL: "{{ keystone_admin_url }}/v3"
+  OS_IDENTITY_API_VERSION: 3
+  OS_REGION_NAME: "{{ openstack_region_name }}"
+
+# FROM ENOS
+# list of available patchs
+# to enable one patch copy past its description
+# to your local config file and enable it
+patches:
+  - name: patch galera.cnf.j2
+    src: galera.cnf.j2
+    dst: kolla/ansible/roles/mariadb/templates/galera.cnf.j2
+    enabled: "no"
+  - name: patch wsgi-keystone.conf.j2
+    src: wsgi-keystone.conf.j2
+    dst: kolla/ansible/roles/keystone/templates/wsgi-keystone.conf.j2
+    enabled: "no"
+  - name: patch haproxy.cfg.j2
+    src: haproxy.cfg.j2
+    dst: kolla/ansible/roles/haproxy/templates/haproxy.cfg.j2
+    enabled: "no"
+  - name: patch mariadb start
+    src: mariadb_start.yml
+    dst: kolla/ansible/roles/mariadb/tasks/start.yml
+    enabled: "no"
+  - name: patch mariadb bootstrap
+    src: mariadb_bootstrap.yml
+    dst: kolla/ansible/roles/mariadb/tasks/bootstrap.yml
+    enabled: "no"
