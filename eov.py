@@ -175,17 +175,18 @@ Options:
         raise ValueError("No node to run %s onto" % action)
     hosts = [host.strip() for host in open(hosts_file, 'r')]
     logging.info("Running ansible")
-    kolla()
+    config = kolla()
+#    print(config)
     extra_vars.update({'exec_dir': EOV_PATH,
                        'nodes': hosts,
-                       'action_type': action if not action else str(action)})
+                       'action_type': action if not action else str(action),
+                       'config': config})
     extra_vars.update(_kolla_config(conf))
     launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
     run_ansible([launch_playbook], '%s/hosts' % CURRENT_PATH,
                 extra_vars=extra_vars)
 
 
-@doc()
 def kolla(**kwargs):
     """
 Usage: eov kolla [options]
@@ -202,6 +203,7 @@ Deploy openstack using kolla.
          multinode_file.write(multinode)
          for line in multinode_part:
              multinode_file.write(line)
+    return config
 
 
 def _check_file_exists(fil):

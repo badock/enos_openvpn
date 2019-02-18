@@ -6,10 +6,10 @@ networks:
     gateway: {{ network1 }}.0.1
     dns: 8.8.8.8
     roles: ['network_interface']
-  - cidr: {{ network2 }}.0.0/{{ mask }}
-    start: {{ network2 }}.0.254
+  - cidr: {{ network2 }}.1.0/{{ mask }}
+    start: {{ network2 }}.1.254
     end: {{ network2 }}.255.254
-    gateway: {{ network2 }}.0.1
+    gateway: {{ network2 }}.1.1
     dns: 8.8.8.8
     roles: ['neutron_external_interface']
 
