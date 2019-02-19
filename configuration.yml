@@ -27,6 +27,7 @@ kolla:
   network_interface: tap0
   neutron_external_interface: tap1
   os_version: rocky
+  os_password: demo
 
 images:
   - name: debian-9

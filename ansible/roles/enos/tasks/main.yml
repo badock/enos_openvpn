@@ -161,13 +161,12 @@
 #   when:
 #     - inventory_hostname == openvpn_node
 
-- name: Copy kolla-ansible password.yml
-  copy:
-    src: passwords.yml
-    dest: "/etc/kolla/passwords.yml"
+- name: Prepare kolla-ansible passwords.yml
+  template:
+    src: passwords.yml.j2
+    dest: /etc/kolla/passwords.yml
   when:
     - inventory_hostname == openvpn_node
-
 
 - name: Copy multinode file
   copy:

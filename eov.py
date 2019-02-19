@@ -179,7 +179,6 @@ Options:
     hosts = [host.strip() for host in open(hosts_file, 'r')]
     logging.info("Running ansible")
     config = kolla()
-#    print(config)
     extra_vars.update({'exec_dir': EOV_PATH,
                        'nodes': hosts,
                        'action_type': action if not action else str(action),
@@ -255,6 +254,7 @@ def _kolla_config(conf):
             'neutron_external_interface': user_conf['kolla']['neutron_external_interface'],
             'kolla_internal_ip': user_conf['kolla']['kolla_internal_ip'],
             'os_version': user_conf['kolla']['os_version'],
+            'os_password': user_conf['kolla']['os_password'],
             'images': user_conf['images']}
     return conf
 
