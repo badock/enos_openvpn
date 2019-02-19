@@ -2,15 +2,15 @@
 networks:
   - cidr: {{ network1 }}.0.0/{{ mask }}
     start: {{ network1 }}.0.254
-    end: {{ network1 }}.125.254
+    end: {{ network1 }}.127.254
     gateway: {{ network1 }}.0.1
     dns: 8.8.8.8
     roles: ['network_interface']
     server: {{ network1 }}.0.0
-  - cidr: {{ network2 }}.125.0/{{ mask }}
-    start: {{ network2 }}.126.20
+  - cidr: {{ network2 }}.128.0/{{ mask }}
+    start: {{ network2 }}.128.20
     end: {{ network2 }}.255.254
-    gateway: {{ network2 }}.126.1
+    gateway: {{ network2 }}.128.1
     dns: 8.8.8.8
     roles: ['neutron_external_interface']
     server: {{ network2 }}.126.0

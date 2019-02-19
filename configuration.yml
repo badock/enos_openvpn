@@ -20,7 +20,7 @@ ssh_key: ~/enos_openvpn/current/ansible
 network:
   network1: 11.8
   network2: 11.8
-  mask: 24
+  mask: 17
 
 kolla:
   kolla_internal_ip: 11.8.0.254
