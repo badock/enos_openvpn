@@ -23,8 +23,8 @@
     out_interface: eno1
     jump: MASQUERADE
   loop:
-    - 11.8.0.0/24
-    - 11.8.1.0/24
+    - "{{ config['networks'][0]['cidr'] }}"
+    - "{{ config['networks'][1]['cidr'] }}"
 
 
 - name: Copy easy-rsa

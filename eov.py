@@ -128,11 +128,14 @@ Options:
         _add_node_to_hosts(add)
         extra_vars.update({'action_type': 'add'})
     hosts = [host.strip() for host in open("%s/hosts" % CURRENT_PATH, 'r')]
+    config = kolla()
+    print(config)
     logging.info("Running ansible openvpn")
     exec_dir = os.path.dirname(os.path.realpath(__file__))
     extra_vars.update({ 'exec_dir': exec_dir,
                         'nodes': hosts,
-                        'node': add})
+                        'node': add,
+                        'config': config})
     launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
     run_ansible([launch_playbook], '%s/hosts' % CURRENT_PATH,
                 extra_vars=extra_vars)

@@ -14,9 +14,9 @@ tls-auth ta.key 0
 # cipher AES-256-CBC
 # secret /etc/openvpn/openvpn-shared-key.key
 # Network
-server 11.8.0.0 255.255.255.0
+server {{ config.networks[0].server }} 255.255.255.0
 client-to-client
-# push "route 11.8.0.0 255.255.255.0"
+# push "route {{ config.networks[0].server }} 255.255.255.0"
 push "route 255.255.255.255 255.255.255.255"
 # Defining VPN server as default gateway for the clients
 # push "redirect-gateway bypass-dhcp"
