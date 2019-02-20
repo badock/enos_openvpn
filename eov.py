@@ -23,22 +23,19 @@ on a specific command.
 
 import os
 import shutil
-import sys
 import logging
 import yaml
-import time
 import copy
 
 from docopt import docopt
 from flask import Flask, send_from_directory
 import execo
 import execo_g5k as ex5
-import execo_g5k.api_utils as api
 from enoslib.api import run_ansible
 import jinja2
 
 from utils import (EOV_PATH, ANSIBLE_PATH, CURRENT_PATH, doc,
-doc_lookup)
+                   doc_lookup)
 
 
 # Formatting the logger
@@ -49,6 +46,7 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(m
 # Creating a Flask instance
 
 app = Flask(__name__)
+
 
 @doc()
 def deploy(xp_name, walltime, cluster, nodes, reservation=None, **kwargs):
@@ -74,14 +72,14 @@ Options:
                                             frontend=oarjob[1])
             if info["name"] == xp_name:
                 job = oargridjob
-    if not 'job' in locals():
+    if 'job' not in locals():
         logging.info("Making a submission")
         job_specs = [(ex5.OarSubmission(resources="nodes="+nodes,
                                         walltime=walltime,
                                         reservation_date=reservation,
                                         job_type="deploy",
                                         name=xp_name), cluster)]
-        logging.info("Getting job %s on %s nodes of %s cluster" \
+        logging.info("Getting job %s on %s nodes of %s cluster"
                      " for %s hours" % (xp_name, nodes, cluster, walltime))
         if reservation:
             logging.info("With the reservation parameter: %s" % reservation)
@@ -96,20 +94,33 @@ Options:
     nodes = ex5.get_oargrid_job_nodes(job)
     hosts_file = '%s/hosts' % CURRENT_PATH
     if not((_check_file_exists(hosts_file) and
-    os.stat(hosts_file).st_size != 0)):
+            os.stat(hosts_file).st_size != 0)):
         logging.info("Deploying debian on nodes %s" % nodes)
         deployment = ex5.kadeploy.Deployment(hosts=nodes,
                                              env_name='debian9-x64-nfs')
         deployed, undeployed = ex5.kadeploy.deploy(deployment)
         logging.info("Deployed debian on: %s" % ', '.join(map(str, deployed)))
         if undeployed:
-            logging.warning("Deployment did not work on: %s" % ', '.join(map(str, deployed)))
+            logging.warning("Deployment did not work on: %s" % ', '.
+                            join(map(str, deployed)))
         with open(hosts_file, 'w') as f:
             for host in deployed:
                 f.write("%s\n" % host)
+    else:
+        deployed = _get_hosts(hosts_file)
     private_key_path = '%s/ansible' % CURRENT_PATH
     if not _check_file_exists(private_key_path):
         os.system('ssh-keygen -t rsa -N "" -b 4096 -f %s' % private_key_path)
+    public_key_path = '%s.pub' % private_key_path
+    con_param = {'user': 'root'}
+    cmd = execo.action.Put(deployed,
+                           [public_key_path],
+                           '/root/.ssh/ansible.pub',
+                           con_param)
+    cmd.run()
+    cmd_to_run = "cat /root/.ssh/ansible.pub >> .ssh/authorized_keys"
+    cmd = execo.action.Remote(cmd_to_run, deployed, con_param)
+    cmd.run()
 
 
 @doc()
@@ -125,17 +136,18 @@ Options:
     _create_ansible_conf()
     extra_vars = {'action_type': None}
     if add:
-        _add_node_to_hosts(add)
+        hosts_file = _add_node_to_hosts(add)
         extra_vars.update({'action_type': 'add'})
-    hosts = [host.strip() for host in open("%s/hosts" % CURRENT_PATH, 'r')]
-    config = kolla()
-    print(config)
-    logging.info("Running ansible openvpn")
+    else:
+        hosts_file = "%s/hosts" % CURRENT_PATH
+    hosts = _get_hosts(hosts_file)
+    node_conf, _ = _make_node_configuration(hosts)
+    logging.info("Running ansible openvpn with the config:\n%s" % node_conf)
     exec_dir = os.path.dirname(os.path.realpath(__file__))
-    extra_vars.update({ 'exec_dir': exec_dir,
-                        'nodes': hosts,
-                        'node': add,
-                        'config': config})
+    extra_vars.update({'exec_dir': exec_dir,
+                       'nodes': hosts,
+                       'node': add,
+                       'config': node_conf})
     launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
     run_ansible([launch_playbook], '%s/hosts' % CURRENT_PATH,
                 extra_vars=extra_vars)
@@ -144,28 +156,26 @@ Options:
 # pip target is bugged, so for now, enos dir will be in /tmp/src
 # https://github.com/pypa/pip/issues/4390
 @doc(EOV_PATH)
-def enos(g5k, enos_dir, conf, action=None, node=None, **kwargs):
+def kolla(g5k, conf, action=None, node=None, **kwargs):
     """
-Usage: eov enos [options]
+Usage: eov kolla [options]
 
-Deploy enos on hosts
+Deploy OpenStack on hosts, using Kolla
 
 Options:
     --g5k               Deploying on g5k [default: false]
     --node NODE         The node to act on
-    --enos_dir DIR      Define enos install directory [default: /tmp/src]
     -a, --action ACTION Define the action to do
     -c, --conf CONF     Which configuration file to use [default: {}/configuration.yml]
 
     """
     _create_ansible_conf()
-    hosts_file = '%s/hosts' % CURRENT_PATH
-    extra_vars = { 'g5k': g5k,
-                   'enos_dir': enos_dir,
-                   'node': None,
-                   'alias': None,
-                   'current_dir': CURRENT_PATH}
+    extra_vars = {'g5k': g5k,
+                  'node': None,
+                  'alias': None,
+                  'current_dir': CURRENT_PATH}
     if action and node:
+        hosts_file = '%s/%s/hosts' % (CURRENT_PATH, node)
         if action not in ['add', 'remove', 'rejoin']:
             raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
         if action == 'add':
@@ -176,50 +186,53 @@ Options:
                            'alias': alias})
     elif action:
         raise ValueError("No node to run %s onto" % action)
-    hosts = [host.strip() for host in open(hosts_file, 'r')]
+    else:
+        hosts_file = '%s/hosts' % CURRENT_PATH
+    hosts = _get_hosts(hosts_file)
     logging.info("Running ansible")
-    config = kolla()
+    node_conf = _multinode_file(hosts_file)
     extra_vars.update({'exec_dir': EOV_PATH,
                        'nodes': hosts,
                        'action_type': action if not action else str(action),
-                       'config': config})
+                       'config': node_conf})
     extra_vars.update(_kolla_config(conf))
     launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
     run_ansible([launch_playbook], '%s/hosts' % CURRENT_PATH,
                 extra_vars=extra_vars)
 
 
-def kolla(**kwargs):
+def _multinode_file(hosts_file, **kwargs):
     """
-Usage: eov kolla [options]
-
-Deploy openstack using kolla.
+Make configuration and multinode file
     """
-    hosts_file = '%s/hosts' % CURRENT_PATH
-    if _check_file_exists(hosts_file):
-        hosts = [host.strip() for host in open(hosts_file, 'r')]
-    config = _config(hosts)
-    multinode = _multinode(config, 'kolla_ssh')
+    hosts = _get_hosts(hosts_file)
+    node_conf, global_conf = _make_node_configuration(hosts)
+    private_key_path = _get_private_key(global_conf)
+    multinode = _multinode(node_conf, private_key_path)
     with open('%s/multinode' % CURRENT_PATH, 'w') as multinode_file, \
          open ('multinode.part', 'r') as multinode_part:
-         multinode_file.write(multinode)
-         for line in multinode_part:
-             multinode_file.write(line)
-    return config
+        multinode_file.write(multinode)
+        for line in multinode_part:
+            multinode_file.write(line)
+    return node_conf
 
 
 def _check_file_exists(fil):
     return os.path.exists(fil) and os.path.isfile(fil)
 
 
+def _get_hosts(hosts_file):
+    if _check_file_exists(hosts_file):
+        hosts = [host.strip() for host in open(hosts_file, 'r')]
+    else:
+        hosts = None
+    return hosts
+
+
 def _create_ansible_conf():
     if not _check_file_exists('%s/ansible.cfg' % EOV_PATH):
-        config = _read_configuration()
-        private_key_path = os.path.expanduser(config['ssh_key'])
-        if not _check_file_exists(private_key_path):
-            logging.info("%s does not exist, using ~/.ssh/id_rsa instead" %
-                         private_key_path)
-            private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
+        global_conf = _read_configuration()
+        private_key_path = _get_private_key(global_conf)
         variables = {'private_key': private_key_path}
         jinja_conf = "ansible.cfg.j2"
         env = jinja2.Environment(loader=jinja2.PackageLoader('eov'))
@@ -231,12 +244,13 @@ def _create_ansible_conf():
         logging.info("Using already existing ansible.cfg")
 
 
-# def _add_private_key_to_hosts(hosts_file):
-#     private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
-#     if _check_file_exists(hosts_file):
-#         hosts = [host.strip() for host in open(hosts_file, 'r')]
-#         for host in hosts:
-#             host += " ansible_ssh_private_key=%s" % private_key_path
+def _get_private_key(global_conf):
+    private_key_path = os.path.expanduser(global_conf['ssh_key'])
+    if not _check_file_exists(private_key_path):
+        logging.info("%s does not exist, using ~/.ssh/id_rsa instead" %
+                     private_key_path)
+        private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
+    return private_key_path
 
 
 def _read_configuration(config_path='%s/configuration.yml' % EOV_PATH):
@@ -249,54 +263,54 @@ def _read_configuration(config_path='%s/configuration.yml' % EOV_PATH):
 
 
 def _kolla_config(conf):
-    user_conf = _read_configuration(conf)
-    conf = {'network_interface': user_conf['kolla']['network_interface'],
-            'neutron_external_interface': user_conf['kolla']['neutron_external_interface'],
-            'kolla_internal_ip': user_conf['kolla']['kolla_internal_ip'],
-            'os_version': user_conf['kolla']['os_version'],
-            'os_password': user_conf['kolla']['os_password'],
-            'images': user_conf['images']}
-    return conf
+    global_conf = _read_configuration(conf)
+    kolla_dict = global_conf['kolla']
+    kolla_conf = {'network_interface': kolla_dict['network_interface'],
+                  'neutron_external_interface': kolla_dict['neutron_external_interface'],
+                  'kolla_internal_ip': kolla_dict['kolla_internal_ip'],
+                  'os_version': kolla_dict['os_version'],
+                  'os_password': kolla_dict['os_password'],
+                  'images': global_conf['images']}
+    return kolla_conf
 
 
-def _config(hosts):
+def _make_node_configuration(hosts):
     variables = {'hosts': hosts}
-    configuration = _read_configuration()
-    control_number = range(configuration['nodes']['control'])
-    network_number = range(configuration['nodes']['network'])
-    compute_number = range(configuration['nodes']['compute'])
-    network1 = configuration['network']['network1']
-    network2 = configuration['network']['network2']
-    mask = configuration['network']['mask']
-    if 'all-in-one' in configuration:
-        node_index = _all_in_one(configuration,
+    global_conf = _read_configuration()
+    control_number = range(global_conf['nodes']['control'])
+    network_number = range(global_conf['nodes']['network'])
+    compute_number = range(global_conf['nodes']['compute'])
+    network1 = global_conf['network']['network1']
+    network2 = global_conf['network']['network2']
+    mask = global_conf['network']['mask']
+    if 'all-in-one' in global_conf:
+        node_index = _all_in_one(global_conf,
                                  control_number,
                                  network_number,
                                  compute_number)
-    variables.update({'node_index' : node_index,
-                      'controls' : control_number,
-                      'networks' : network_number,
-                      'computes' : compute_number,
+    variables.update({'node_index': node_index,
+                      'controls': control_number,
+                      'networks': network_number,
+                      'computes': compute_number,
                       'network1': network1,
                       'network2': network2,
-                      'mask': mask })
+                      'mask': mask})
     jinja_conf = "post_conf.yaml.j2"
     env = jinja2.Environment(
         loader=jinja2.PackageLoader('eov')
     )
     template = env.get_template(jinja_conf)
     render = (template.render(variables))
-    yaml_conf = yaml.load(render)
-    return yaml_conf
+    node_conf = yaml.load(render)
+    return node_conf, global_conf
 
 
 
-def _all_in_one(conf, control_number, network_number, compute_number):
+def _all_in_one(global_conf, control_number, network_number, compute_number):
     node_number = {'control': [], 'network': [], 'compute': []}
-    n_cont = conf['all-in-one']['control']
-    n_net = conf['all-in-one']['network']
-    n_comp = conf['all-in-one']['compute']
-
+    n_cont = global_conf['all-in-one']['control']
+    n_net = global_conf['all-in-one']['network']
+    n_comp = global_conf['all-in-one']['compute']
     for cont in control_number:
         node_number['control'].append(n_cont + cont)
     for net in network_number:
@@ -306,12 +320,8 @@ def _all_in_one(conf, control_number, network_number, compute_number):
     return node_number
 
 
-def _multinode(conf, ssh_path=None):
-    if not ssh_path:
-        private_key_path = '%s/.ssh/id_rsa' % os.path.expanduser("~")
-    else:
-        private_key_path = ssh_path
-    conf_copy = copy.deepcopy(conf)
+def _multinode(node_conf, private_key_path):
+    conf_copy = copy.deepcopy(node_conf)
     for typ in conf_copy['resources']:
         for node in conf_copy['resources'][typ]:
             ssh = ('ssh' if node['host'] != 'localhost' else 'local')
@@ -327,7 +337,7 @@ def _multinode(conf, ssh_path=None):
                                                             private_key_path)})
     variables = {'control': conf_copy['resources']['control'],
                  'network': conf_copy['resources']['network'],
-                 'compute': conf_copy['resources']['compute'] }
+                 'compute': conf_copy['resources']['compute']}
     env = jinja2.Environment(
         loader=jinja2.PackageLoader('eov')
     )
@@ -338,10 +348,17 @@ def _multinode(conf, ssh_path=None):
 
 def _add_node_to_hosts(add):
     hosts_file = '%s/hosts' % CURRENT_PATH
+    node_directory = '%s/%s' % (CURRENT_PATH, add)
+    hosts_for_node = '%s/hosts' % node_directory
     if (_check_file_exists(hosts_file) and
-    os.stat(hosts_file).st_size != 0):
+        os.stat(hosts_file).st_size != 0):
+        if not os.path.exists(node_directory):
+                os.makedirs(node_directory)
+        if not _check_file_exists(hosts_for_node):
+            shutil.copy2(hosts_file,
+                         hosts_for_node)
         logging.info("You have requested to add %s" % add)
-        with open(hosts_file, "r+") as f:
+        with open(hosts_for_node, "r+") as f:
             for line in f:
                 if add in line:
                     break
@@ -350,11 +367,12 @@ def _add_node_to_hosts(add):
                 f.write('\n%s' % add)
     else:
         raise OSError("No host file or the host file is empty.")
+    return hosts_for_node
 
 
 def _add_node_in_reservation(add):
     current_nodes = '%s/reservation.yaml' % CURRENT_PATH
-    if not _check_file_exists(current_node):
+    if not _check_file_exists(current_nodes):
         shutil.copy2('reservation.yaml',
                      current_nodes)
     node_present = False
@@ -370,11 +388,11 @@ def _add_node_in_reservation(add):
                 return compute['alias'], compute['address']
     all_computes = []
     for compute in reservation['resources']['compute']:
-	number = int(compute['alias'].replace('compute-node', ''))
+        number = int(compute['alias'].replace('compute-node', ''))
         all_computes.append(number)
     number_of_computes = max(all_computes)
     # we need a new compute node.
-    #its number is the number of node plus one
+    # its number is the number of node plus one
     alias = 'compute-node%d' % (number_of_computes + 1)
     # its address is the same but the computes addresses start at 4
     address = '11.8.0.%d' % (number_of_computes+4)
@@ -411,7 +429,7 @@ def _add_node_in_multinode(alias, address):
             multinode_final.append(node_line)
     # putting everything back into the file
     with open(multinode_file, 'w') as f:
-        for line in multinode_final :
+        for line in multinode_final:
             f.write("%s" % line)
 
 
@@ -434,7 +452,8 @@ Remove temporary files in the 'current' directory
 
 @app.route('/')
 def ssh_public_key():
-    public_key_path = '%s/.ssh/id_rsa.pub' % os.path.expanduser("~")
+    global_conf = _read_configuration()
+    public_key_path = _get_private_key(global_conf)
     with open(public_key_path) as f:
         lines = f.readlines()
     return lines[0]
@@ -452,7 +471,7 @@ def enos_action(action, g5k, name):
         g5k = True
     else:
         g5k = False
-    enos(g5k=g5k, enos_dir='/tmp/src', action=action, node=name)
+    kolla(g5k=g5k, action=action, node=name)
     return "Action %s has been executed for %s\n" % (action, name)
 
 
