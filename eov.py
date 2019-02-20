@@ -305,7 +305,6 @@ def _make_node_configuration(hosts):
     return node_conf, global_conf
 
 
-
 def _all_in_one(global_conf, control_number, network_number, compute_number):
     node_number = {'control': [], 'network': [], 'compute': []}
     n_cont = global_conf['all-in-one']['control']

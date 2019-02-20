@@ -45,44 +45,12 @@
   command: mount --bind /tmp/nova /var/lib/nova
   when: g5k
 
-# - name: Bindmounting docker
-#   mount:
-#     path: /tmp/docker/volumes
-#     src: /var/lib/docker/volumes
-#     opts: bind
-#     fstype: none
-#     state: mounted
-#   when: g5k
-
-
-# - name: Bindmounting nova
-#   mount:
-#     path: /tmp/nova
-#     src: /var/lib/nova
-#     opts: bind
-#     fstype: none
-#     state: mounted
-#   when: g5k
-
-
 - name: Piping
   pip:
     name: "{{ item }}"
   loop:
     - ansible
     - kolla-ansible
-
-
-# - name: Getting enos
-#   pip:
-#     name: git+https://github.com/marie-donnie/enos.git@limit#egg=enos
-#     editable: true
-#     executable: pip3
-#     # extra_args: "--target {{ enos_dir }}"
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - not action_type
-
 
 - name: Generates ssh key if not present
   local_action:
@@ -156,11 +124,6 @@
   when:
     - inventory_hostname == openvpn_node
 
-# - name: Password
-#   command: kolla-genpwd
-#   when:
-#     - inventory_hostname == openvpn_node
-
 - name: Prepare kolla-ansible passwords.yml
   template:
     src: passwords.yml.j2
@@ -174,16 +137,6 @@
     dest: "/root/multinode"
   when:
     - inventory_hostname == openvpn_node
-
-# - name: Kolla deploy dependencies
-#   shell: kolla-ansible -i ./multinode bootstrap-servers > /tmp/kolla.logs
-#   when:
-#     - inventory_hostname == openvpn_node
-
-# - name: Kolla pre-checks
-#   shell: kolla-ansible -i ./multinode prechecks > /tmp/kolla.logs
-#   when:
-#     - inventory_hostname == openvpn_node
 
 - name: Patch kolla
   copy:
@@ -203,96 +156,15 @@
   shell: "ls -l /srv/init_os/{{ item.name }}.qcow2 || curl -L -o /srv/init_os/{{ item.name }}.qcow2 {{ item.url }}"
   loop: "{{ images }}"
 
-
 - name: Openstack deployment
   shell: "kolla-ansible -i ./multinode deploy > /tmp/kolla.logs"
   when:
     - inventory_hostname == openvpn_node
 
-
-- name: Generate init script
-  template:
-    src: init.sh.j2
-    dest: /srv/init_os/init.sh
+- name: Init OpenStack
+  include: init_os.yml
   when:
     - inventory_hostname == config['resources']['network'][0]['host']
-
-- name: Make the init script executable
-  file:
-    path: /srv/init_os/init.sh
-    mode: 0755
-  when:
-    - inventory_hostname == config['resources']['network'][0]['host']
-
-- name: Get the reference on the kolla-toolbox image
-  shell: "{% raw %} docker images --format '{{ .Repository }}:{{ .Tag }}' | grep kolla-toolbox {% endraw %}"
-  register: kolla_toolbox_image
-  when:
-    - inventory_hostname == config['resources']['network'][0]['host']
-
-- name: Launch init in kolla_toolbox container
-  docker_container:
-    name: kolla_toolbox
-    env: "{{ os_env }}"
-    command: "/srv/init_os/init.sh"
-    image: "{{ kolla_toolbox_image.stdout }}"
-    volumes:
-      - /srv/init_os:/srv/init_os
-  register: docker_output
-  when:
-    - inventory_hostname == config['resources']['network'][0]['host']
-
-- name: Wait for the end of the init...
-  command: "docker ps -q --filter id={{ docker_output.ansible_facts.docker_container.Id }}"
-  register: finished
-  until: finished.stdout == ""
-  delay: 5
-  retries:  100
-  when:
-    - inventory_hostname == config['resources']['network'][0]['host']
-
-- name: Init report
-  command: "docker logs {{ docker_output.ansible_facts.docker_container.Id }}"
-  register: init_output
-  when:
-    - inventory_hostname == config['resources']['network'][0]['host']
-
-- name: Init report
-  debug: var=init_output
-  when:
-    - inventory_hostname == config['resources']['network'][0]['host']
-
-
-# - name: Include kolla vars
-#   include_vars: "/root/kolla/etc/kolla/ansible/group_vars/all.yml"
-#   when:
-#     - inventory_hostname == openvpn_node
-
-# - name: Generate OpenStack admin-openrc
-#   template:
-#     src: admin-openrc.j2
-#     dest: "{{ current_dir }}/admin-openrc"
-#   when:
-#     - inventory_hostname == openvpn_node
-
-
-
-
-
-# - name: Adding reservation file
-#   copy:
-#     src: "{{ exec_dir }}/reservation.yaml"
-#     dest: reservation.yaml
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - not action_type
-
-
-# - name: Executing enos
-#   shell: "enos deploy > /tmp/enos.logs"
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - not action_type
 
 # - stat:
 #     path: current/multinode
@@ -317,7 +189,7 @@
 #   when:
 #     - inventory_hostname == openvpn_node
 #     - not action_type
-#     - multinode.stat.exists
+#     - not multinode.stat.exists
 
     # ACTION
 
