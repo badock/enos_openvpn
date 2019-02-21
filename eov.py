@@ -26,6 +26,7 @@ import shutil
 import logging
 import yaml
 import copy
+import tarfile
 
 from docopt import docopt
 from flask import Flask, send_from_directory
@@ -179,12 +180,12 @@ Options:
         if _check_file_exists(hosts_file):
             node_conf = _multinode_file(hosts_file, node)
         else:
-            raise OsError("No host file")
+            raise OSError("No host file")
         if action not in ['add', 'remove', 'rejoin']:
             raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
         if action == 'add':
             _add_node_to_hosts(node)
-        alias, address = _add_node_in_reservation(node)
+        alias, address, node_conf = _add_node_in_reservation(node, node_conf)
         _add_node_in_multinode(alias, address)
         extra_vars.update({'node': node,
                            'alias': alias})
@@ -354,12 +355,10 @@ def _multinode(node_conf, private_key_path):
 
 def _add_node_to_hosts(add):
     hosts_file = '%s/hosts' % CURRENT_PATH
-    node_directory = '%s/%s' % (CURRENT_PATH, add)
-    hosts_for_node = '%s/hosts' % node_directory
     if (_check_file_exists(hosts_file) and
         os.stat(hosts_file).st_size != 0):
-        if not os.path.exists(node_directory):
-                os.makedirs(node_directory)
+        node_directory = _make_add_directory(add)
+        hosts_for_node = '%s/hosts' % node_directory
         if not _check_file_exists(hosts_for_node):
             shutil.copy2(hosts_file,
                          hosts_for_node)
@@ -376,41 +375,18 @@ def _add_node_to_hosts(add):
     return hosts_for_node
 
 
-def _add_node_in_reservation(add):
-    current_nodes = '%s/reservation.yaml' % CURRENT_PATH
-    if not _check_file_exists(current_nodes):
-        shutil.copy2('reservation.yaml',
-                     current_nodes)
-    node_present = False
-    with open(current_nodes, "r") as f:
-        for line in f:
-            if add in line:
-                node_present = True
-    with open(current_nodes, "r") as f:
-        reservation = yaml.load(f)
-    if node_present:
-        for compute in reservation['resources']['compute']:
-            if 'node' in compute and compute['node'] == add:
-                return compute['alias'], compute['address']
-    all_computes = []
-    for compute in reservation['resources']['compute']:
-        number = int(compute['alias'].replace('compute-node', ''))
-        all_computes.append(number)
-    number_of_computes = max(all_computes)
-    # we need a new compute node.
-    # its number is the number of node plus one
-    alias = 'compute-node%d' % (number_of_computes + 1)
-    # its address is the same but the computes addresses start at 4
+def _add_node_in_reservation(add, node_conf):
+    computes = node_conf['resources']['compute']
+    number_of_computes = len(computes)
+    alias = 'compute_node%s' % (number_of_computes + 1)
     address = '11.8.0.%d' % (number_of_computes+4)
     new_node = {'alias': alias,
                 'user': 'root',
                 'address': address,
                 'node': str(add)}
-    logging.info("Adding new node for %s: %s" % (add, new_node))
-    reservation['resources']['compute'].append(new_node)
-    with open(current_nodes, 'w') as f:
-        yaml.dump(reservation, f)
-    return alias, address
+    conf_copy = copy.deepcopy(node_conf)
+    conf_copy['resources']['compute'].add(new_node)
+    return alias, address, conf_copy
 
 
 def _add_node_in_multinode(alias, address):
@@ -437,6 +413,13 @@ def _add_node_in_multinode(alias, address):
     with open(multinode_file, 'w') as f:
         for line in multinode_final:
             f.write("%s" % line)
+
+
+def _make_add_directory(add):
+    dir_path = '%s/%s' % (CURRENT_PATH, add)
+    if not (os.path.exists(dir_path) and os.path.isdir(dir_path)):
+        os.makedirs(dir_path)
+    return dir_path
 
 
 @doc()
@@ -468,7 +451,11 @@ def ssh_public_key():
 @app.route('/openvpn/<add>')
 def openvpn_add(add):
     openvpn(add)
-    return "You have been added to openvpn.\n"
+    tar_file_path = '%s/%s.tar.gz' % (CURRENT_PATH, add)
+    dir_to_tar = '%s/%s' % (CURRENT_PATH, add)
+    with tarfile.open(tar_file_path, "w:gz") as tar:
+        tar.add(dir_to_tar)
+    return send_from_directory('current', tar_file_path)
 
 
 @app.route('/enos/<action>/<g5k>/<name>')
@@ -477,7 +464,8 @@ def enos_action(action, g5k, name):
         g5k = True
     else:
         g5k = False
-    kolla(g5k=g5k, action=action, node=name)
+    conf = '%s/configuration.yml' % EOV_PATH
+    kolla(g5k=g5k, conf=conf, action=action, node=name)
     return "Action %s has been executed for %s\n" % (action, name)
 
 

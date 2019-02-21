@@ -31,9 +31,8 @@ import subprocess
 
 from docopt import docopt
 
-from utils import (EOV_PATH, ANSIBLE_PATH, SYMLINK_NAME, doc,
+from utils import (EOV_PATH, ANSIBLE_PATH, CURRENT_PATH, doc,
 doc_lookup)
-
 
 # Formatting the logger
 
@@ -77,6 +76,18 @@ Options:
     except OSError as error:
         logging.error(error)
         logging.error("Encountered an error while joining openvpn")
+        raise
+    # Put the content into a tar
+    files = '%s/%s.tar.gz' % (CURRENT_PATH, name)
+    open(files, 'wb').write(result.content)
+    # Untaring files
+    try:
+        tar = tarfile.open(files)
+        tar.extractall()
+        tar.close()
+    except OSError as error:
+        logging.error(error)
+        logging.error("The files could not be extracted")
         raise
 
 

@@ -18,9 +18,13 @@
     - gcc
     - libssl-dev
     - python-selinux
+  when:
+    - (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
 - name: Installing docker
   shell: which docker || (curl -sSL https://get.docker.com/ | sh)
+  when:
+    - (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
 - name: Create directories
   file:
@@ -31,15 +35,21 @@
     - /var/lib/docker/volumes
     - /tmp/nova
     - /var/lib/nova
-  when: g5k
+  when:
+    - g5k
+    - (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
 - name: Bind volumes of docker in /tmp (free storage location on G5k)
   command: mount --bind /tmp/docker/volumes /var/lib/docker/volumes
-  when: g5k
+  when:
+    - g5k
+    - (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
 - name: Bind nova local storage in /tmp
   command: mount --bind /tmp/nova /var/lib/nova
-  when: g5k
+  when:
+    - g5k
+    - (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
 - name: Piping
   pip:
@@ -47,6 +57,8 @@
   loop:
     - ansible
     - kolla-ansible
+  when:
+    - (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
 - name: Deploy OpenStack
   include: not_action.yml
