@@ -1,0 +1,41 @@
+    # ACTION
+
+# - name: Copy multinode file
+#   copy:
+#     src: "{{ exec_dir }}/current/multinode"
+#     dest: "/root/multinode"
+#   when:
+#     - inventory_hostname == openvpn_node
+#     - action_type
+
+
+#     # ADDITION
+
+# - name: Executing enos up limited
+#   shell: "enos up --limit > /tmp/enos.logs"
+#   when:
+#     - inventory_hostname == openvpn_node
+#     - action_type == 'add'
+
+
+# - name: Executing kolla deploy limited
+#   shell: "enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
+#   when:
+#     - inventory_hostname == openvpn_node
+#     - action_type == 'add'
+
+#     # STOP
+
+# - name: Executing kolla stop limited
+#   shell: "enos kolla -- stop --limit {{ alias }} > /tmp/enos.logs"
+#   when:
+#     - inventory_hostname == openvpn_node
+#     - action_type == 'remove'
+
+#     # REJOIN
+
+# - name: Executing kolla deploy limited
+#   shell: "enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
+#   when:
+#     - inventory_hostname == openvpn_node
+#     - action_type == 'rejoin'

@@ -1,10 +1,9 @@
-
+---
 
 - name: Installing dependencies
   apt:
     name: "{{ item }}"
     state: present
-    # update_cache: yes
   with_items:
     - python
     - python-dev
@@ -20,10 +19,8 @@
     - libssl-dev
     - python-selinux
 
-
 - name: Installing docker
   shell: which docker || (curl -sSL https://get.docker.com/ | sh)
-
 
 - name: Create directories
   file:
@@ -35,7 +32,6 @@
     - /tmp/nova
     - /var/lib/nova
   when: g5k
-
 
 - name: Bind volumes of docker in /tmp (free storage location on G5k)
   command: mount --bind /tmp/docker/volumes /var/lib/docker/volumes
@@ -52,100 +48,10 @@
     - ansible
     - kolla-ansible
 
-- name: Generates ssh key if not present
-  local_action:
-    module: command ssh-keygen -b 4096 -q -t rsa -f '{{ exec_dir }}/current/kolla_ssh' -C '' -N ''
-    args:
-      creates: '{{ exec_dir }}/current/kolla_ssh'
-  run_once: true
-  when: (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
-
-- name: Copy the private ssh key to control
-  copy:
-    src: "{{ exec_dir }}/current/kolla_ssh"
-    dest: /root/.ssh/kolla_ssh
-    mode: u+rw,g-rwx,o-rwx
-  when: (inventory_hostname == openvpn_node and not action_type)
-
-
-- name: Copy the public ssh key to hosts
-  copy:
-    src: "{{ exec_dir }}/current/kolla_ssh.pub"
-    dest: /root/.ssh/kolla_ssh.pub
-  when: (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
-
-
-- name: Adding the key to authorized keys
-  shell: "cat /root/.ssh/kolla_ssh.pub >> .ssh/authorized_keys"
-  when: (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
-
-
-  # WHEN RUNNING FIRST TIME (not adding a node)
-
-- name: Copy ansible config file
-  copy:
-    src: ansible.cfg
-    dest: /root/ansible.cfg
+- name: Deploy OpenStack
+  include: not_action.yml
   when:
-    - inventory_hostname == openvpn_node
     - not action_type
-
-
-# FROM ENOS
-- name: Mount /run
-  command: mount --make-shared /run
-
-
-# Note: nscd prevents kolla-toolbox to start
-# See, https://bugs.launchpad.net/kolla-ansible/+bug/1680139
-- name: Stop nscd service (prevents kolla-toolbox to start)
-  systemd: state=stopped name=nscd
-  ignore_errors: yes
-
-
-- name: Get kolla sources
-  git:
-    repo: 'https://github.com/openstack/kolla-ansible.git'
-    dest: /root/kolla/
-  when:
-    - inventory_hostname == openvpn_node
-
-- name: Create kolla directory
-  file:
-    path: /etc/kolla
-    state: directory
-  when:
-    - inventory_hostname == openvpn_node
-
-- name: Template variables
-  template:
-    src: globals.yml.j2
-    dest: /etc/kolla/globals.yml
-  when:
-    - inventory_hostname == openvpn_node
-
-- name: Prepare kolla-ansible passwords.yml
-  template:
-    src: passwords.yml.j2
-    dest: /etc/kolla/passwords.yml
-  when:
-    - inventory_hostname == openvpn_node
-
-- name: Copy multinode file
-  copy:
-    src: "{{ exec_dir }}/current/multinode"
-    dest: "/root/multinode"
-  when:
-    - inventory_hostname == openvpn_node
-
-- name: Patch kolla
-  copy:
-    src: "{{ item.src }}"
-    dest: "{{ current_dir }}/{{ item.dst }}"
-  with_items: "{{ patches }}"
-  when:
-    - item.enabled | bool
-    - inventory_hostname == openvpn_node
 
 - name: Create local working directory (/srv/init_os)
   file:
@@ -156,8 +62,20 @@
   shell: "ls -l /srv/init_os/{{ item.name }}.qcow2 || curl -L -o /srv/init_os/{{ item.name }}.qcow2 {{ item.url }}"
   loop: "{{ images }}"
 
-- name: Openstack deployment
-  shell: "kolla-ansible -i ./multinode deploy > /tmp/kolla.logs"
+# FROM ENOS
+- name: Mount /run
+  command: mount --make-shared /run
+
+# Note: nscd prevents kolla-toolbox to start
+# See, https://bugs.launchpad.net/kolla-ansible/+bug/1680139
+- name: Stop nscd service (prevents kolla-toolbox to start)
+  systemd:
+    state: stopped
+    name: nscd
+  ignore_errors: yes
+
+- name: Deploy OpenStack
+  include: main_node.yml
   when:
     - inventory_hostname == openvpn_node
 
@@ -165,79 +83,3 @@
   include: init_os.yml
   when:
     - inventory_hostname == config['resources']['network'][0]['host']
-
-# - stat:
-#     path: current/multinode
-#   register: multinode
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - not action_type
-
-# - debug:
-#     msg: "Found multinode file"
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - not action_type
-#     - multinode.stat.exists
-
-
-# - name: Fetch multinode file
-#   fetch:
-#     src: current/multinode
-#     dest: "{{ exec_dir }}/current/multinode"
-#     flat: yes
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - not action_type
-#     - not multinode.stat.exists
-
-    # ACTION
-
-# - name: Adding reservation file
-#   copy:
-#     src: "{{ exec_dir }}/current/reservation.yaml"
-#     dest: reservation.yaml
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - action_type
-
-
-# - name: Copy multinode file
-#   copy:
-#     src: "{{ exec_dir }}/current/multinode"
-#     dest: "{{ enos_dir}}/enos/enos/inventories/multinode"
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - action_type
-
-
-#     # ADDITION
-
-# - name: Executing enos up limited
-#   shell: "enos up --limit > /tmp/enos.logs"
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - action_type == 'add'
-
-
-# - name: Executing kolla deploy limited
-#   shell: "enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - action_type == 'add'
-
-#     # STOP
-
-# - name: Executing kolla stop limited
-#   shell: "enos kolla -- stop --limit {{ alias }} > /tmp/enos.logs"
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - action_type == 'remove'
-
-#     # REJOIN
-
-# - name: Executing kolla deploy limited
-#   shell: "enos kolla -- deploy --limit {{ alias }} > /tmp/enos.logs"
-#   when:
-#     - inventory_hostname == openvpn_node
-#     - action_type == 'rejoin'

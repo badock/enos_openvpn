@@ -1,0 +1,36 @@
+- name: Get kolla sources
+  git:
+    repo: 'https://github.com/openstack/kolla-ansible.git'
+    dest: /root/kolla/
+
+- name: Create kolla directory
+  file:
+    path: /etc/kolla
+    state: directory
+
+- name: Template variables
+  template:
+    src: globals.yml.j2
+    dest: /etc/kolla/globals.yml
+
+- name: Prepare kolla-ansible passwords.yml
+  template:
+    src: passwords.yml.j2
+    dest: /etc/kolla/passwords.yml
+
+- name: Copy multinode file
+  copy:
+    src: "{{ exec_dir }}/current/multinode"
+    dest: "/root/multinode"
+
+- name: Patch kolla
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ current_dir }}/{{ item.dst }}"
+  with_items: "{{ patches }}"
+  when:
+    - item.enabled | bool
+
+
+- name: Openstack deployment
+  shell: "kolla-ansible -i ./multinode deploy > /tmp/kolla.logs"

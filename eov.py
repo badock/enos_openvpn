@@ -176,6 +176,10 @@ Options:
                   'current_dir': CURRENT_PATH}
     if action and node:
         hosts_file = '%s/%s/hosts' % (CURRENT_PATH, node)
+        if _check_file_exists(hosts_file):
+            node_conf = _multinode_file(hosts_file, node)
+        else:
+            raise OsError("No host file")
         if action not in ['add', 'remove', 'rejoin']:
             raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
         if action == 'add':
@@ -188,9 +192,10 @@ Options:
         raise ValueError("No node to run %s onto" % action)
     else:
         hosts_file = '%s/hosts' % CURRENT_PATH
+        node_conf = _multinode_file(hosts_file)
     hosts = _get_hosts(hosts_file)
     logging.info("Running ansible")
-    node_conf = _multinode_file(hosts_file)
+
     extra_vars.update({'exec_dir': EOV_PATH,
                        'nodes': hosts,
                        'action_type': action if not action else str(action),
@@ -201,11 +206,13 @@ Options:
                 extra_vars=extra_vars)
 
 
-def _multinode_file(hosts_file, **kwargs):
+def _multinode_file(hosts_file, add=None, **kwargs):
     """
 Make configuration and multinode file
     """
     hosts = _get_hosts(hosts_file)
+    if add:
+        return None
     node_conf, global_conf = _make_node_configuration(hosts)
     private_key_path = _get_private_key(global_conf)
     multinode = _multinode(node_conf, private_key_path)
