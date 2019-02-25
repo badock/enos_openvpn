@@ -59,20 +59,21 @@ Add master ssh key to the node. MASTER is the ip of the master node
 def openvpn(master, name, **kwargs):
 
     """
-Usage: client openvpn MASTER [options]
+        Usage: client openvpn MASTER [options]
 
-Connect to the openvpn network. MASTER is the ip of the master node
+        Connect to the openvpn network. MASTER is the ip of the master node
 
-Options:
-    -n, --name NAME     Name of the node to add [default: new_node]
-    """
-    # Get file content from master node
+        Options:
+                -n, --name NAME     Name of the node to add [default: new_node]
+                    """
+
+    Get file content from master node
     try:
         url = "http://%s/openvpn/%s" % (master, name)
         logging.info("Getting the required files and installing dependencies")
         result = requests.get(url)
         if result.status_code == requests.codes.ok:
-            logging.info("You have correctly been added to openvpn")
+          logging.info("You have correctly been added to openvpn")
     except OSError as error:
         logging.error(error)
         logging.error("Encountered an error while joining openvpn")
@@ -80,15 +81,43 @@ Options:
     # Put the content into a tar
     files = '%s/%s.tar.gz' % (CURRENT_PATH, name)
     open(files, 'wb').write(result.content)
-    # Untaring files
+    # Untaring received files
     try:
         tar = tarfile.open(files)
         tar.extractall()
         tar.close()
     except OSError as error:
         logging.error(error)
-        logging.error("The files could not be extracted")
         raise
+    node_dir = '%s/%s' % (CURRENT_PATH, name)
+    # Untaring openvpn files
+    # try:
+    #     openvpn_files = '%s/%s.tar.gz' % (node_dir, name)
+    #     tar = tarfile.open(openvpn_files)
+    #     tar.extractall(CURRENT_PATH)
+    #     tar.close()
+    # except OSError as error:
+    #     logging.error(error)
+    #     raise
+    extra_vars = {'action_type': 'add',
+                  'added_node': True}
+    host = ['localhost']
+    host_file = "%s/host" % node_dir
+    with open(host_file, 'w') as f:
+        f.write("%s ansible_connection=local" % name)
+    hosts_file = "%s/hosts" % node_dir
+    hosts = _get_hosts(hosts_file)
+    node_conf, _ = _make_node_configuration(hosts)
+    print(hosts)
+    logging.info("Running ansible openvpn with the config:\n%s" % node_conf)
+    exec_dir = os.path.dirname(os.path.realpath(__file__))
+    extra_vars.update({'exec_dir': exec_dir,
+                       'nodes': host,
+                       'node': name,
+                       'config': node_conf})
+    launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
+    run_ansible([launch_playbook], host_file,
+                extra_vars=extra_vars)
 
 
 @doc()

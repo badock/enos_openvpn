@@ -1,7 +1,4 @@
-# - name: Getting openvpn key to put on other nodes
-#   fetch:
-#     src: /etc/openvpn/openvpn-shared-key.key
-#     dest: "{{ exec_dir }}/current/openvpn-shared-key.key"
+---
 
 
 - name: Generating clients certificates and keys
@@ -54,11 +51,10 @@
     format: gz
   loop: "{{ other_nodes }}"
 
-
 - name: Getting the archives to put on the nodes
   fetch:
     src: "/etc/openvpn/clientconf/{{ item }}.tar.gz"
-    dest: "{{ exec_dir }}/current/"
+    dest: "{{ exec_dir }}/current/{{ item }}/"
     flat: yes
   loop: "{{ other_nodes }}"
 

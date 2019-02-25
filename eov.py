@@ -135,7 +135,8 @@ Options:
     --add NODE         Add defined node
     """
     _create_ansible_conf()
-    extra_vars = {'action_type': None}
+    extra_vars = {'action_type': None,
+                  'added_node': False}
     if add:
         hosts_file = _add_node_to_hosts(add)
         extra_vars.update({'action_type': 'add'})
@@ -149,6 +150,7 @@ Options:
                        'nodes': hosts,
                        'node': add,
                        'config': node_conf})
+    print(extra_vars)
     launch_playbook = os.path.join(ANSIBLE_PATH, 'openvpn.yml')
     run_ansible([launch_playbook], '%s/hosts' % CURRENT_PATH,
                 extra_vars=extra_vars)
@@ -451,11 +453,18 @@ def ssh_public_key():
 @app.route('/openvpn/<add>')
 def openvpn_add(add):
     openvpn(add)
-    tar_file_path = '%s/%s.tar.gz' % (CURRENT_PATH, add)
-    dir_to_tar = '%s/%s' % (CURRENT_PATH, add)
-    with tarfile.open(tar_file_path, "w:gz") as tar:
-        tar.add(dir_to_tar)
-    return send_from_directory('current', tar_file_path)
+    logging.info("Taring file")
+    try:
+        dir_to_tar = '%s/%s' % ('current/', add)
+        tar_file_path = '%s.tar.gz' % (dir_to_tar)
+        with tarfile.open(tar_file_path, "w:gz") as tar:
+            tar.add(dir_to_tar)
+    except Exception as error:
+        logging.error(error)
+        logging.error("Encountered an error while taring")
+        raise
+    tar_file = '%s.tar.gz' % add
+    return send_from_directory(CURRENT_PATH, tar_file)
 
 
 @app.route('/enos/<action>/<g5k>/<name>')

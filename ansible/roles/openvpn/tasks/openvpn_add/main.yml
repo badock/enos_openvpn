@@ -1,0 +1,75 @@
+---
+
+- name: Installing dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - openvpn
+    - screen
+    - bridge-utils
+    - rsync
+
+
+- name: Ensure group nobody exists
+  group:
+    name: nobody
+    state: present
+
+
+- name: Creates directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /etc/openvpn
+    - /etc/openvpn/keys
+
+
+- name: Extract directory
+  unarchive:
+    src: "/root/enos_openvpn/current/{{ inventory_hostname }}/{{ inventory_hostname }}.tar.gz"
+    dest: "/root/"
+    remote_src: yes
+
+
+- name: Copy shared key
+  copy:
+    src: "/root/{{ inventory_hostname }}/openvpn-shared-key.key"
+    dest: /etc/openvpn/openvpn-shared-key.key
+    remote_src: yes
+
+
+- name: Copying delete route file
+  copy:
+    src: delete_route.sh
+    dest: /root/delete_route.sh
+    mode: "u=rwx,g=r,o=r"
+
+
+- name: Using client.conf
+  shell: "openvpn --daemon --config client.conf"
+  args:
+    chdir: "/root/{{ inventory_hostname }}/"
+
+
+- name: Waiting a few seconds
+  pause:
+    seconds: 4
+
+
+- name: Using client1.conf
+  shell: "openvpn --daemon --config client1.conf"
+  args:
+    chdir: "/root/{{ inventory_hostname }}/"
+
+
+- name: Creating docker0 interface fix file
+  template:
+    src: create_docker0.sh.j2
+    dest: /root/create_docker0.sh
+    mode: "u=rwx,g=r,o=r"
+
+
+- name: Executing docker0 interface fix file
+  shell: "bash /root/create_docker0.sh"

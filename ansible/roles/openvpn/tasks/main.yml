@@ -1,59 +1,9 @@
 ---
 
-- name: Installing dependencies
-  apt:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - openvpn
-    - screen
-    - bridge-utils
-    - rsync
+- name: Running OpenVPN
+  include: openvpn/main.yml
+  when: not added_node
 
-
-- name: Ensure group nobody exists
-  group:
-    name: nobody
-    state: present
-
-
-- name: Creates directories
-  file:
-    path: "{{ item }}"
-    state: directory
-  with_items:
-    - /etc/openvpn
-    - /etc/openvpn/keys
-
-
-- name: Preparing master node when not adding node
-  include: not_addition.yml
-  when:
-    - not node
-    - inventory_hostname == openvpn_node
-
-
-- name: Preparing master node
-  include: openvpn_node.yml
-  when:
-    - inventory_hostname == openvpn_node
-
-
-- name: Other nodes
-  include: others.yml
-  when:
-    - inventory_hostname in other_nodes
-    # - not node
-
-
-- name: Creating docker0 interface fix file
-  template:
-    src: create_docker0.sh.j2
-    dest: /root/create_docker0.sh
-    mode: "u=rwx,g=r,o=r"
-  when: (inventory_hostname == openvpn_node and not node) or inventory_hostname in other_nodes
-
-
-- name: Executing docker0 interface fix file
-  shell: "bash /root/create_docker0.sh"
-  when: (inventory_hostname == openvpn_node and not node) or inventory_hostname in other_nodes
+- name: Adding compute to OpenVPN
+  include: openvpn_add/main.yml
+  when: added_node
