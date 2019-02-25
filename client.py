@@ -33,6 +33,8 @@ from docopt import docopt
 
 from utils import (EOV_PATH, ANSIBLE_PATH, CURRENT_PATH, doc,
 doc_lookup)
+from enoslib.api import run_ansible
+from eov import _get_hosts, _make_node_configuration
 
 # Formatting the logger
 
@@ -67,7 +69,7 @@ def openvpn(master, name, **kwargs):
                 -n, --name NAME     Name of the node to add [default: new_node]
                     """
 
-    Get file content from master node
+    # Get file content from master node
     try:
         url = "http://%s/openvpn/%s" % (master, name)
         logging.info("Getting the required files and installing dependencies")

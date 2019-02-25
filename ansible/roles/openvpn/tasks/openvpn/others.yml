@@ -3,7 +3,7 @@
 
 - name: Get tars
   copy:
-    src: "{{ exec_dir }}/current/{{ inventory_hostname }}.tar.gz"
+    src: "{{ exec_dir }}/current/{{ inventory_hostname }}/{{ inventory_hostname }}.tar.gz"
     dest: "/root/{{ inventory_hostname }}.tar.gz"
 
 
