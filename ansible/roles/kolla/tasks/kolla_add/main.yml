@@ -112,4 +112,4 @@
 
 
 - name: Openstack deployment
-  shell: "kolla-ansible -i ./multinode deploy -- limit {{ node }} > /tmp/kolla.logs"
+  shell: "kolla-ansible -i /root/multinode deploy --extra use_preconfigured_databases=yes --limit {{ node }} > /tmp/kolla.logs"

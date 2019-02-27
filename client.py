@@ -62,13 +62,13 @@ Add master ssh key to the node. MASTER is the ip of the master node
 def openvpn(master, name, **kwargs):
 
     """
-        Usage: client openvpn MASTER [options]
+Usage: client openvpn MASTER [options]
 
-        Connect to the openvpn network. MASTER is the ip of the master node
+Connect to the openvpn network. MASTER is the ip of the master node
 
-        Options:
-                -n, --name NAME     Name of the node to add [default: new_node]
-                    """
+Options:
+    -n, --name NAME     Name of the node to add [default: new_node]
+    """
 
     # Get file content from master node
     try:
@@ -171,7 +171,8 @@ Options:
     logging.info("Running ansible")
     extra_vars.update({'exec_dir': EOV_PATH,
                        'action_type': action if not action else str(action),
-                       'config': node_conf})
+                       'config': node_conf,
+                       'node': node_infos['alias']})
     extra_vars.update(_kolla_config(conf))
     launch_playbook = os.path.join(ANSIBLE_PATH, 'kolla.yml')
     run_ansible([launch_playbook], 'test',
