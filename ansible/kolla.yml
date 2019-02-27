@@ -1,0 +1,6 @@
+- name: Configure, deploy and initialize OpenStack
+  hosts: all
+  remote_user: root
+  roles:
+    - { role: kolla,
+        tags: ['kolla'] }

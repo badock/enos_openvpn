@@ -13,7 +13,7 @@ General options:
 Commands:
   deploy [<args>...]  Claim resources from g5k and deploy debian
   openvpn             Deploy OpenVPN on resources
-  enos                Deploy enos
+  kolla               Deploy OpenStack using Kolla
   cleanup             Cleans the current experiment directory
 
 See 'eov <command> --help' for more information
@@ -176,7 +176,8 @@ Options:
     extra_vars = {'g5k': g5k,
                   'node': None,
                   'alias': None,
-                  'current_dir': CURRENT_PATH}
+                  'current_dir': CURRENT_PATH,
+                  'adding_compute': False}
     if action and node:
         hosts_file = '%s/%s/hosts' % (CURRENT_PATH, node)
         if _check_file_exists(hosts_file):
@@ -204,7 +205,7 @@ Options:
                        'action_type': action if not action else str(action),
                        'config': node_conf})
     extra_vars.update(_kolla_config(conf))
-    launch_playbook = os.path.join(ANSIBLE_PATH, 'enos.yml')
+    launch_playbook = os.path.join(ANSIBLE_PATH, 'kolla.yml')
     run_ansible([launch_playbook], '%s/hosts' % CURRENT_PATH,
                 extra_vars=extra_vars)
 
@@ -214,11 +215,12 @@ def _multinode_file(hosts_file, add=None, **kwargs):
 Make configuration and multinode file
     """
     hosts = _get_hosts(hosts_file)
-    if add:
-        return None
-    node_conf, global_conf = _make_node_configuration(hosts)
-    private_key_path = _get_private_key(global_conf)
-    multinode = _multinode(node_conf, private_key_path)
+    node_conf, global_conf = _make_node_configuration(hosts, add)
+    if not add:
+        private_key_path = _get_private_key(global_conf)
+        multinode = _multinode(node_conf, add, private_key_path)
+    else:
+        multinode = _multinode(node_conf, add)
     with open('%s/multinode' % CURRENT_PATH, 'w') as multinode_file, \
          open ('multinode.part', 'r') as multinode_part:
         multinode_file.write(multinode)
@@ -284,7 +286,7 @@ def _kolla_config(conf):
     return kolla_conf
 
 
-def _make_node_configuration(hosts):
+def _make_node_configuration(hosts, add=None):
     variables = {'hosts': hosts}
     global_conf = _read_configuration()
     control_number = range(global_conf['nodes']['control'])
@@ -312,6 +314,8 @@ def _make_node_configuration(hosts):
     template = env.get_template(jinja_conf)
     render = (template.render(variables))
     node_conf = yaml.load(render)
+    if add:
+        _ , _, node_conf = _add_node_in_reservation(add, node_conf)
     return node_conf, global_conf
 
 
@@ -329,24 +333,35 @@ def _all_in_one(global_conf, control_number, network_number, compute_number):
     return node_number
 
 
-def _multinode(node_conf, private_key_path):
+def _multinode(node_conf, add=None, private_key_path=None):
     conf_copy = copy.deepcopy(node_conf)
+    if private_key_path:
+        ssh_private_key = "ansible_ssh_private_key= %s "% private_key_path
+    else:
+        ssh_private_key = ""
     for typ in conf_copy['resources']:
         for node in conf_copy['resources'][typ]:
             ssh = ('ssh' if node['host'] != 'localhost' else 'local')
             node.update({'parameters':
                          ("ansible_ssh_user=root "
                           "ansible_connection={} "
-                          "ansible_ssh_private_key={} "
+                          "{}"
                           "ansible_ssh_common_args="
                           "'-o StrictHostKeyChecking=no "
                           "-o UserKnownHostsFile=/dev/null' "
                           "neutron_external_interface=tap1 "
                           "network_interface=tap0 ").format(ssh,
-                                                            private_key_path)})
+                                                            ssh_private_key)})
+    computes = conf_copy['resources']['compute']
+    if add:
+        compute = [c for c in computes if c['host'] == add]
+        compute[0].update({'parameters': "ansible_ssh_user=root "
+                          "ansible_connection=local "
+                          "neutron_external_interface=tap1 network_interface=tap0"})
+        computes = copy.deepcopy(compute)
     variables = {'control': conf_copy['resources']['control'],
                  'network': conf_copy['resources']['network'],
-                 'compute': conf_copy['resources']['compute']}
+                 'compute': computes}
     env = jinja2.Environment(
         loader=jinja2.PackageLoader('eov')
     )
@@ -385,9 +400,9 @@ def _add_node_in_reservation(add, node_conf):
     new_node = {'alias': alias,
                 'user': 'root',
                 'address': address,
-                'node': str(add)}
+                'host': str(add)}
     conf_copy = copy.deepcopy(node_conf)
-    conf_copy['resources']['compute'].add(new_node)
+    conf_copy['resources']['compute'].append(new_node)
     return alias, address, conf_copy
 
 

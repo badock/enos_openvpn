@@ -2,22 +2,21 @@
 
 - name: Installing dependencies
   apt:
-    name: "{{ item }}"
+    name:
+      - python
+      - python-dev
+      - git
+      - python-pip
+      - python3-pip
+      - python-setuptools
+      - kvm
+      - fping
+      - curl
+      - libffi-dev
+      - gcc
+      - libssl-dev
+      - python-selinux
     state: present
-  with_items:
-    - python
-    - python-dev
-    - git
-    - python-pip
-    - python3-pip
-    - python-setuptools
-    - kvm
-    - fping
-    - curl
-    - libffi-dev
-    - gcc
-    - libssl-dev
-    - python-selinux
   when:
     - (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
@@ -60,10 +59,43 @@
   when:
     - (inventory_hostname == openvpn_node and not action_type) or inventory_hostname in other_nodes
 
-- name: Deploy OpenStack
-  include: not_action.yml
+- name: Generates ssh key if not present
+  local_action:
+    module: command ssh-keygen -b 4096 -q -t rsa -f '{{ exec_dir }}/current/kolla_ssh' -C '' -N ''
+    args:
+      creates: '{{ exec_dir }}/current/kolla_ssh'
+  run_once: true
   when:
-    - not action_type
+    - inventory_hostname == openvpn_node
+
+- name: Copy the private ssh key to control
+  copy:
+    src: "{{ exec_dir }}/current/kolla_ssh"
+    dest: /root/.ssh/kolla_ssh
+    mode: u+rw,g-rwx,o-rwx
+  when:
+    - inventory_hostname == openvpn_node
+
+- name: Copy the public ssh key to hosts
+  copy:
+    src: "{{ exec_dir }}/current/kolla_ssh.pub"
+    dest: /root/.ssh/kolla_ssh.pub
+  when:
+    - inventory_hostname == openvpn_node or inventory_hostname in other_nodes
+
+- name: Adding the key to authorized keys
+  shell: "cat /root/.ssh/kolla_ssh.pub >> .ssh/authorized_keys"
+  when:
+    - inventory_hostname == openvpn_node or inventory_hostname in other_nodes
+
+  # WHEN RUNNING FIRST TIME (not adding a node)
+
+- name: Copy ansible config file
+  copy:
+    src: ansible.cfg
+    dest: /root/ansible.cfg
+  when:
+    - inventory_hostname == openvpn_node
 
 - name: Create local working directory (/srv/init_os)
   file:

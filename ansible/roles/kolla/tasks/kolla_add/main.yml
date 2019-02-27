@@ -1,0 +1,115 @@
+---
+
+- name: Installing dependencies
+  apt:
+    name:
+      - python
+      - python-dev
+      - git
+      - python-pip
+      - python3-pip
+      - python-setuptools
+      - kvm
+      - fping
+      - curl
+      - libffi-dev
+      - gcc
+      - libssl-dev
+      - python-selinux
+    state: present
+
+
+- name: Installing docker
+  shell: which docker || (curl -sSL https://get.docker.com/ | sh)
+
+- name: Create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /tmp/docker/volumes
+    - /var/lib/docker/volumes
+    - /tmp/nova
+    - /var/lib/nova
+  when:
+    - g5k
+
+- name: Bind volumes of docker in /tmp (free storage location on G5k)
+  command: mount --bind /tmp/docker/volumes /var/lib/docker/volumes
+  when:
+    - g5k
+
+- name: Bind nova local storage in /tmp
+  command: mount --bind /tmp/nova /var/lib/nova
+  when:
+    - g5k
+
+- name: Piping
+  pip:
+    name: "{{ item }}"
+  loop:
+    - ansible
+    - kolla-ansible
+
+- name: Copy ansible config file
+  copy:
+    src: ansible.cfg
+    dest: /root/ansible.cfg
+
+- name: Create local working directory (/srv/init_os)
+  file:
+    path: /srv/init_os
+    state: directory
+
+- name: Download reference images
+  shell: "ls -l /srv/init_os/{{ item.name }}.qcow2 || curl -L -o /srv/init_os/{{ item.name }}.qcow2 {{ item.url }}"
+  loop: "{{ images }}"
+
+# FROM ENOS
+- name: Mount /run
+  command: mount --make-shared /run
+
+# Note: nscd prevents kolla-toolbox to start
+# See, https://bugs.launchpad.net/kolla-ansible/+bug/1680139
+- name: Stop nscd service (prevents kolla-toolbox to start)
+  systemd:
+    state: stopped
+    name: nscd
+  ignore_errors: yes
+
+- name: Get kolla sources
+  git:
+    repo: 'https://github.com/openstack/kolla-ansible.git'
+    dest: /root/kolla/
+
+- name: Create kolla directory
+  file:
+    path: /etc/kolla
+    state: directory
+
+- name: Template variables
+  template:
+    src: globals.yml.j2
+    dest: /etc/kolla/globals.yml
+
+- name: Prepare kolla-ansible passwords.yml
+  template:
+    src: passwords.yml.j2
+    dest: /etc/kolla/passwords.yml
+
+- name: Copy multinode file
+  copy:
+    src: "{{ exec_dir }}/current/multinode"
+    dest: "/root/multinode"
+
+- name: Patch kolla
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ current_dir }}/{{ item.dst }}"
+  with_items: "{{ patches }}"
+  when:
+    - item.enabled | bool
+
+
+- name: Openstack deployment
+  shell: "kolla-ansible -i ./multinode deploy -- limit {{ node }} > /tmp/kolla.logs"

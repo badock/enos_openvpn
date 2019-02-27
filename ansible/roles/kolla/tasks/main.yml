@@ -1,0 +1,11 @@
+---
+
+- name: Deploy the OpenStack structure
+  include: kolla/main.yml
+  when: not adding_compute
+
+
+- name: Add compute
+  include: kolla_add/main.yml
+  when:
+    - adding_compute

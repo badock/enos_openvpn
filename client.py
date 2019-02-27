@@ -32,9 +32,10 @@ import subprocess
 from docopt import docopt
 
 from utils import (EOV_PATH, ANSIBLE_PATH, CURRENT_PATH, doc,
-doc_lookup)
+                   doc_lookup)
 from enoslib.api import run_ansible
-from eov import _get_hosts, _make_node_configuration
+from eov import (_get_hosts, _make_node_configuration, _multinode_file,
+                 _add_node_in_reservation, _kolla_config)
 
 # Formatting the logger
 
@@ -92,15 +93,6 @@ def openvpn(master, name, **kwargs):
         logging.error(error)
         raise
     node_dir = '%s/%s' % (CURRENT_PATH, name)
-    # Untaring openvpn files
-    # try:
-    #     openvpn_files = '%s/%s.tar.gz' % (node_dir, name)
-    #     tar = tarfile.open(openvpn_files)
-    #     tar.extractall(CURRENT_PATH)
-    #     tar.close()
-    # except OSError as error:
-    #     logging.error(error)
-    #     raise
     extra_vars = {'action_type': 'add',
                   'added_node': True}
     host = ['localhost']
@@ -122,8 +114,8 @@ def openvpn(master, name, **kwargs):
                 extra_vars=extra_vars)
 
 
-@doc()
-def enos(master, name, action, g5k=False, **kwargs):
+@doc(EOV_PATH)
+def enos(master, name, action, conf, g5k=False, **kwargs):
 
     """
 Usage: client enos MASTER [options]
@@ -134,22 +126,56 @@ Options:
     -n, --name NAME      Name of the node to act on [default: new_node]
     --g5k                Specify if the node is on g5k [default: False]
     -a, --action ACTION  Action to run (add, remove or rejoin)
+    -c, --conf CONF     Which configuration file to use [default: {}/configuration.yml]
     """
-    if action not in ['add', 'remove', 'rejoin']:
-        raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
-    # Request to be added
-    try:
-        url = "http://%s/enos/%s/%s/%s" % (master, action, g5k, name)
-        logging.info("Executing %s" % action)
-        result = requests.get(url)
-        if result.status_code == requests.codes.ok:
-            logging.info("%s has correctly been executed" % action.capitalize())
-        else:
-            logging.error("Encountered an error while adding the node:\n%s" % result)
-    except Exception as error:
-        logging.error("Encountered an error while adding the node")
-        logging.error(error)
-        raise
+    # if action not in ['add', 'remove', 'rejoin']:
+    #     raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
+    # # Request to be added
+    # try:
+    #     url = "http://%s/enos/%s/%s/%s" % (master, action, g5k, name)
+    #     logging.info("Executing %s" % action)
+    #     result = requests.get(url)
+    #     if result.status_code == requests.codes.ok:
+    #         logging.info("%s has correctly been executed" % action.capitalize())
+    #     else:
+    #         logging.error("Encountered an error while adding the node:\n%s" % result)
+    # except Exception as error:
+    #     logging.error("Encountered an error while adding the node")
+    #     logging.error(error)
+    #     raise
+    extra_vars = {'g5k': g5k,
+                  'node': name,
+                  'current_dir': CURRENT_PATH,
+                  'adding_compute': False}
+    if action and name:
+        if action not in ['add', 'remove', 'rejoin']:
+            raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
+        hosts_file = '%s/%s/hosts' % (CURRENT_PATH, name)
+        node_conf = _multinode_file(hosts_file, name)
+        # alias, address, node_conf = _add_node_in_reservation(name, node_conf)
+        # extra_vars.update({'alias': alias})
+        if action == 'add':
+            extra_vars.update({'adding_compute': True})
+    elif action:
+        raise ValueError("No node to run %s onto" % action)
+    else:
+        raise ValueError("No action was given")
+    hosts = _get_hosts(hosts_file)
+    for comp in node_conf['resources']['compute']:
+        if comp['host'] == name:
+            node_infos = comp
+    with open('test', 'w') as f:
+        f.write("%s ansible_host=%s ansible_ssh_user=root ansible_connection=local "
+                "neutron_external_interface=tap1 network_interface=tap0"
+                % (node_infos['alias'], node_infos['address']))
+    logging.info("Running ansible")
+    extra_vars.update({'exec_dir': EOV_PATH,
+                       'action_type': action if not action else str(action),
+                       'config': node_conf})
+    extra_vars.update(_kolla_config(conf))
+    launch_playbook = os.path.join(ANSIBLE_PATH, 'kolla.yml')
+    run_ansible([launch_playbook], 'test',
+                extra_vars=extra_vars)
 
 
 @doc()
