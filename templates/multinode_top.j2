@@ -1,23 +1,23 @@
 [default-group]
 {%- for c in control %}
-{{ c.alias }} ansible_host={{ c.address }} {{ c.parameters }}
+{{ c.host }} ansible_host={{ c.address }} {{ c.parameters }}
 {%- endfor %}
 {%- for n in network %}
-{{ n.alias }} ansible_host={{ n.address }} {{ n.parameters }}
+{{ n.host }} ansible_host={{ n.address }} {{ n.parameters }}
 {%- endfor %}
 {%- for c in compute %}
-{{ c.alias }} ansible_host={{ c.address }} {{ c.parameters }}
+{{ c.host }} ansible_host={{ c.address }} {{ c.parameters }}
 {%- endfor %}
 [control]
 {%- for c in control %}
-{{ c.alias }} ansible_host={{ c.address }} {{ c.parameters }}
+{{ c.host }} ansible_host={{ c.address }} {{ c.parameters }}
 {%- endfor %}
 [network]
 {%- for n in network %}
-{{ n.alias }} ansible_host={{ n.address }} {{ n.parameters }}
+{{ n.host }} ansible_host={{ n.address }} {{ n.parameters }}
 {%- endfor %}
 [compute]
 {%- for c in compute %}
-{{ c.alias }} ansible_host={{ c.address }} {{ c.parameters }}
+{{ c.host }} ansible_host={{ c.address }} {{ c.parameters }}
 {%- endfor %}
 [storage]

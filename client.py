@@ -171,8 +171,7 @@ Options:
     logging.info("Running ansible")
     extra_vars.update({'exec_dir': EOV_PATH,
                        'action_type': action if not action else str(action),
-                       'config': node_conf,
-                       'node': node_infos['alias']})
+                       'config': node_conf})
     extra_vars.update(_kolla_config(conf))
     launch_playbook = os.path.join(ANSIBLE_PATH, 'kolla.yml')
     run_ansible([launch_playbook], 'test',

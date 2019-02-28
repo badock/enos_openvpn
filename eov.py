@@ -336,7 +336,7 @@ def _all_in_one(global_conf, control_number, network_number, compute_number):
 def _multinode(node_conf, add=None, private_key_path=None):
     conf_copy = copy.deepcopy(node_conf)
     if private_key_path:
-        ssh_private_key = "ansible_ssh_private_key= %s "% private_key_path
+        ssh_private_key = "ansible_ssh_private_key=%s "% private_key_path
     else:
         ssh_private_key = ""
     for typ in conf_copy['resources']:
