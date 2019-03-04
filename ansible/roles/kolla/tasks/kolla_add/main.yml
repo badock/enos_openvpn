@@ -46,15 +46,18 @@
 
 - name: Piping
   pip:
-    name: "{{ item }}"
-  loop:
-    - ansible
-    - kolla-ansible
+    name:
+      - ansible
+
+- name: Piping bis
+  pip:
+    name: git+https://github.com/openstack/kolla-ansible.git@stable/rocky#egg=kolla
+    editable: true
 
 - name: Copy ansible config file
   copy:
     src: ansible.cfg
-    dest: /root/ansible.cfg
+    dest: /root/.ansible.cfg
 
 - name: Create local working directory (/srv/init_os)
   file:
@@ -77,10 +80,15 @@
     name: nscd
   ignore_errors: yes
 
+- name: Make kolla repo directory
+  file:
+    path : /usr/local/share/kolla-ansible/
+    state: directory
+
 - name: Get kolla sources
   git:
     repo: 'https://github.com/openstack/kolla-ansible.git'
-    dest: /root/kolla/
+    dest: /usr/local/share/kolla-ansible/
 
 - name: Create kolla directory
   file:
@@ -109,7 +117,6 @@
   with_items: "{{ patches }}"
   when:
     - item.enabled | bool
-
 
 - name: Openstack deployment
   shell: "kolla-ansible -i /root/multinode deploy --extra use_preconfigured_databases=yes --limit {{ node }} > /tmp/kolla.logs"

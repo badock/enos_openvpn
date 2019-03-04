@@ -74,7 +74,7 @@ Options:
     try:
         url = "http://%s/openvpn/%s" % (master, name)
         logging.info("Getting the required files and installing dependencies")
-        result = requests.get(url)
+        result = requests.post(url)
         if result.status_code == requests.codes.ok:
           logging.info("You have correctly been added to openvpn")
     except OSError as error:
@@ -125,36 +125,21 @@ Join the existing Openstack. MASTER is the ip of the master node
 Options:
     -n, --name NAME      Name of the node to act on [default: new_node]
     --g5k                Specify if the node is on g5k [default: False]
-    -a, --action ACTION  Action to run (add, remove or rejoin)
-    -c, --conf CONF     Which configuration file to use [default: {}/configuration.yml]
+    -a, --action ACTION  Action to run (POST, DELETE or PUT)
+    -c, --conf CONF      Which configuration file to use [default: {}/configuration.yml]
     """
-    # if action not in ['add', 'remove', 'rejoin']:
-    #     raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
-    # # Request to be added
-    # try:
-    #     url = "http://%s/enos/%s/%s/%s" % (master, action, g5k, name)
-    #     logging.info("Executing %s" % action)
-    #     result = requests.get(url)
-    #     if result.status_code == requests.codes.ok:
-    #         logging.info("%s has correctly been executed" % action.capitalize())
-    #     else:
-    #         logging.error("Encountered an error while adding the node:\n%s" % result)
-    # except Exception as error:
-    #     logging.error("Encountered an error while adding the node")
-    #     logging.error(error)
-    #     raise
     extra_vars = {'g5k': g5k,
                   'node': name,
                   'current_dir': CURRENT_PATH,
                   'adding_compute': False}
     if action and name:
-        if action not in ['add', 'remove', 'rejoin']:
-            raise ValueError("The action must be 'add', 'remove' or 'rejoin'")
+        if action not in ['POST', 'DELETE', 'PUT']:
+            raise ValueError("The action must be 'POST', 'DELETE' or 'PUT'")
         hosts_file = '%s/%s/hosts' % (CURRENT_PATH, name)
         node_conf = _multinode_file(hosts_file, name)
         # alias, address, node_conf = _add_node_in_reservation(name, node_conf)
         # extra_vars.update({'alias': alias})
-        if action == 'add':
+        if action == 'POST':
             extra_vars.update({'adding_compute': True})
     elif action:
         raise ValueError("No node to run %s onto" % action)

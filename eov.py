@@ -29,7 +29,7 @@ import copy
 import tarfile
 
 from docopt import docopt
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
 import execo
 import execo_g5k as ex5
 from enoslib.api import run_ansible
@@ -465,24 +465,38 @@ def ssh_public_key():
     return lines[0]
 
 
-@app.route('/openvpn/<add>')
+@app.route('/openvpn/<add>', methods=['POST'])
 def openvpn_add(add):
-    openvpn(add)
-    logging.info("Taring file")
-    try:
-        dir_to_tar = '%s/%s' % ('current/', add)
-        tar_file_path = '%s.tar.gz' % (dir_to_tar)
-        with tarfile.open(tar_file_path, "w:gz") as tar:
-            tar.add(dir_to_tar)
-    except Exception as error:
-        logging.error(error)
-        logging.error("Encountered an error while taring")
-        raise
+    dir_to_tar = '%s/%s' % ('current', add)
+    tar_file_path = '%s.tar.gz' % (dir_to_tar)
+    if not _check_file_exists(tar_file_path):
+        openvpn(add)
+        logging.info("Taring file")
+        try:
+            hosts_file = '%s/hosts' % CURRENT_PATH
+            hosts = _get_hosts(hosts_file)
+            node_conf, _ = _make_node_configuration(hosts)
+            control_node = node_conf['resources']['control'][0]['host']
+            network_node = node_conf['resources']['network'][0]['host']
+            control_fact = '%s/_tmp/%s' % ('current', control_node)
+            network_fact = '%s/_tmp/%s' % ('current', network_node)
+            os.makedirs('%s/control' % dir_to_tar)
+            os.makedirs('%s/network' % dir_to_tar)
+            shutil.copy2(control_fact,
+                         '%s/control/%s.fact' %(dir_to_tar, control_node))
+            shutil.copy2(network_fact,
+                         '%s/network/%s.fact' %(dir_to_tar, network_node))
+            with tarfile.open(tar_file_path, "w:gz") as tar:
+                tar.add(dir_to_tar)
+        except Exception as error:
+            logging.error(error)
+            logging.error("Encountered an error while taring")
+            raise
     tar_file = '%s.tar.gz' % add
     return send_from_directory(CURRENT_PATH, tar_file)
 
 
-@app.route('/enos/<action>/<g5k>/<name>')
+@app.route('/enos/<name>/<g5k>/<action>', methods=['POST', 'DELETE', 'PUT'])
 def enos_action(action, g5k, name):
     if g5k.lower() == "true" or g5k.lower() == "g5k":
         g5k = True
