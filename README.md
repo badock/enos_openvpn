@@ -26,7 +26,7 @@ Deploy an OpenStack infrastructure via Enos, in which the management network and
                           |                           x.x.x.x
                           |                          +-------+
                           |                          |       |
-						  +--------------------------+       |
+	                  +--------------------------+       |
                               request addition       |       |
                                  to openvpn          +-------+
                                and openstack
