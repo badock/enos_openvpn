@@ -1,0 +1,6 @@
+- name: Configure and run OpenVPN
+  hosts: all
+  remote_user: root
+  roles:
+    - { role: openvpn,
+        tags: ['openvpn'] }

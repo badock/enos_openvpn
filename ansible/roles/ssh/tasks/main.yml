@@ -1,0 +1,30 @@
+---
+
+# - name: Generates ssh key if not present
+#   local_action:
+#     module: command ssh-keygen -b 4096 -q -t rsa -f '{{ exec_dir }}/current/id_rsa' -C '' -N ''
+#     args:
+#       creates: '{{ exec_dir }}/current/id_rsa'
+#   run_once: true
+
+# - name: Copy the ssh key to hosts
+#   copy:
+#     src: "{{ exec_dir }}/current/id_rsa"
+#     dest: /root/.ssh/id_rsa
+
+# - name: Adding the key to authorized keys
+#   shell: "cat /root/.ssh/id_rsa.pub >> .ssh/authorized_keys"
+
+# - name: Make sure the known hosts file exists
+#   file: "path=/root/.ssh/known_hosts state=touch"
+
+# - name: Check host name availability
+#   shell: "ssh-keygen -f /root/.ssh/known_hosts -F {{ item }}"
+#   with_items: hostvars
+#   register: ssh_known_host_results
+#   ignore_errors: yes
+
+# - name: Scan the public key
+#   shell: "ssh-keyscan -H -T 10 {{ item.item }} >> /root/.ssh/known_hosts"
+#   with_items: "{{ ssh_known_host_results.results }}"
+#   when: item.stdout == ""

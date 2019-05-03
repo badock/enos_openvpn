@@ -1,0 +1,51 @@
+# TCP/444 server
+mode server
+tls-server
+# Tcp protocol
+proto udp
+port 444
+dev tap
+# Keys and certs
+ca ca.crt
+cert server.crt
+key server.key
+dh dh2048.pem
+tls-auth ta.key 0
+# cipher AES-256-CBC
+# secret /etc/openvpn/openvpn-shared-key.key
+# Network
+server 11.8.1.0 255.255.255.0
+client-to-client
+# push "route 11.8.1.0 255.255.255.0"
+push "route 255.255.255.255 255.255.255.255"
+# Defining the VPN server as default gateway for the clients
+# push "redirect-gateway bypass-dhcp"
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
+keepalive 10 120
+# Security
+user nobody
+group nogroup
+chroot /etc/openvpn/jail
+persist-key
+persist-tun
+# Log
+verb 3
+mute 20
+status openvpn-status.log
+log-append /var/log/openvpn.log
+management localhost 7505
+# Tweak
+sndbuf 393216
+rcvbuf 393216
+push "sndbuf 393216"
+push "rcvbuf 393216"
+tun-mtu 48000
+fragment 0
+mssfix 0
+# cipher aes-256-cbc
+# cipher none
+cipher AES-128-CBC
+# engine aesni
+# comp-lzo

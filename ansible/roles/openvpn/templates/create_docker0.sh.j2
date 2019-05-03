@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+# create docker0 bridge
+# restart docker systemd service
+# confirm new outgoing NAT masquerade is set up
+#
+# reference
+#     https://docs.docker.com/engine/userguide/networking/default_network/build-bridges/
+#
+brctl addbr docker0
+ip addr add 192.168.42.1/24 dev docker0
+ip link set dev docker0 up
+ip addr show docker0
+#systemctl restart docker
+iptables -t nat -L -n
+exit 0

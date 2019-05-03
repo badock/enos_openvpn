@@ -1,0 +1,29 @@
+# Client
+client
+tls-client
+dev tap
+# tcp-client protocol
+proto udp
+remote {{ openvpn_node }} 443
+resolv-retry infinite
+# cipher AES-256-CBC
+# Keys
+ca ca.crt
+cert {{ item }}.crt
+key {{ item }}.key
+tls-auth ta.key 1
+# Security
+nobind
+persist-key
+persist-tun
+verb 3
+script-security 2
+route-up /root/delete_route.sh
+# Tweak
+tun-mtu 48000
+fragment 0
+mssfix 0
+# cipher aes-256-cbc
+# cipher none
+cipher AES-128-CBC
+# comp-lzo

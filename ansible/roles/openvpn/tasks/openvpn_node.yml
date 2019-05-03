@@ -1,0 +1,74 @@
+# - name: Getting openvpn key to put on other nodes
+#   fetch:
+#     src: /etc/openvpn/openvpn-shared-key.key
+#     dest: "{{ exec_dir }}/current/openvpn-shared-key.key"
+
+
+- name: Generating clients certificates and keys
+  shell: ". ./vars; ./pkitool {{ item }} >/dev/null"
+  args:
+    chdir: "/etc/openvpn/easy-rsa/"
+    creates: "/etc/openvpn/easy-rsa/keys/{{ item }}.key"
+  loop: "{{ other_nodes }}"
+
+
+- name: Creating directories
+  file:
+    path: "/etc/openvpn/clientconf/{{ item }}"
+    state: directory
+  loop: "{{ other_nodes }}"
+
+
+- name: Moving client keys
+  shell: >
+    cp easy-rsa/keys/ca.crt
+    easy-rsa/keys/ta.key
+    easy-rsa/keys/{{ item }}.crt
+    easy-rsa/keys/{{ item }}.key
+    /etc/openvpn/openvpn-shared-key.key
+    clientconf/{{ item }}/
+  args:
+    chdir: "/etc/openvpn/"
+    creates: "/etc/openvpn/clientconf/{{ item }}/ta.key"
+  loop: "{{ other_nodes }}"
+
+
+- name: Creating client configuration
+  template:
+    src: client.conf.j2
+    dest: "/etc/openvpn/clientconf/{{ item }}/client.conf"
+  loop: "{{ other_nodes }}"
+
+
+- name: Creating client1 configuration
+  template:
+    src: client1.conf.j2
+    dest: "/etc/openvpn/clientconf/{{ item }}/client1.conf"
+  loop: "{{ other_nodes }}"
+
+
+- name: Taring the client directories
+  archive:
+    path: "/etc/openvpn/clientconf/{{ item }}"
+    dest: "/etc/openvpn/clientconf/{{ item }}.tar.gz"
+    format: gz
+  loop: "{{ other_nodes }}"
+
+
+- name: Getting the archives to put on the nodes
+  fetch:
+    src: "/etc/openvpn/clientconf/{{ item }}.tar.gz"
+    dest: "{{ exec_dir }}/current/"
+    flat: yes
+  loop: "{{ other_nodes }}"
+
+
+- name: Starting OpenVPN service
+  shell: "openvpn --daemon ovpn-server --status /run/openvpn/server.status 10 --cd /etc/openvpn/server --config /etc/openvpn/{{ item }}"
+  args:
+    chdir: /etc/openvpn
+  loop:
+    - server.conf
+    - server2.conf
+  when:
+    - not node

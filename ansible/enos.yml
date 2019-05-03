@@ -1,0 +1,6 @@
+- name: Configure and run Enos
+  hosts: all
+  remote_user: root
+  roles:
+    - { role: enos,
+        tags: ['enos'] }
